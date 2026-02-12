@@ -44,24 +44,18 @@ func _build_ui():
 	wall.size = Vector2(vp.x, vp.y * (380.0 / REF_H))
 	add_child(wall)
 
-	# Wall shelf (decorative)
-	var shelf = ColorRect.new()
-	shelf.color = Color(0.45, 0.32, 0.22)
-	shelf.position = Vector2(vp.x * (50.0 / REF_W), vp.y * (120.0 / REF_H))
-	shelf.size = Vector2(180, 12)
-	add_child(shelf)
-
-	# Plant on shelf
-	var pot = ColorRect.new()
-	pot.color = Color(0.55, 0.35, 0.20)
-	pot.position = Vector2(vp.x * (110.0 / REF_W), vp.y * (90.0 / REF_H))
-	pot.size = Vector2(30, 30)
-	add_child(pot)
-	var leaves = ColorRect.new()
-	leaves.color = Color(0.25, 0.55, 0.30)
-	leaves.position = Vector2(vp.x * (100.0 / REF_W), vp.y * (60.0 / REF_H))
-	leaves.size = Vector2(50, 35)
-	add_child(leaves)
+	# === PLANT (on wall, replaces shelf + pot + leaves) ===
+	var plant_tex = TextureRect.new()
+	plant_tex.texture = preload("res://assets/kenney-furniture/side/pottedPlant.png")
+	plant_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var plant_scale = 1.6
+	var plant_w = 28.0 * plant_scale
+	var plant_h = 85.0 * plant_scale
+	plant_tex.custom_minimum_size = Vector2(plant_w, plant_h)
+	plant_tex.size = Vector2(plant_w, plant_h)
+	plant_tex.position = Vector2(vp.x * (100.0 / REF_W), vp.y * (40.0 / REF_H))
+	plant_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(plant_tex)
 
 	# Desk surface (lower portion)
 	var desk = ColorRect.new()
@@ -77,34 +71,52 @@ func _build_ui():
 	desk_edge.size = Vector2(vp.x, 6)
 	add_child(desk_edge)
 
-	# === MONITOR (center) ===
-	# Monitor stand
-	var stand_base = ColorRect.new()
-	stand_base.color = Color(0.20, 0.20, 0.22)
-	stand_base.position = Vector2(mon_x + mon_w * 0.315, desk_y + 20)
-	stand_base.size = Vector2(100, 12)
-	add_child(stand_base)
-	var stand_neck = ColorRect.new()
-	stand_neck.color = Color(0.22, 0.22, 0.24)
-	stand_neck.position = Vector2(mon_x + mon_w * 0.465, desk_y - 10)
-	stand_neck.size = Vector2(30, 35)
-	add_child(stand_neck)
+	# === DESK FURNITURE SPRITE (centered under monitor, on top of desk surface) ===
+	var desk_sprite = TextureRect.new()
+	desk_sprite.texture = preload("res://assets/kenney-furniture/side/desk.png")
+	desk_sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var desk_spr_scale = 3.5
+	var desk_spr_w = 116.0 * desk_spr_scale
+	var desk_spr_h = 51.0 * desk_spr_scale
+	desk_sprite.custom_minimum_size = Vector2(desk_spr_w, desk_spr_h)
+	desk_sprite.size = Vector2(desk_spr_w, desk_spr_h)
+	desk_sprite.position = Vector2((vp.x - desk_spr_w) / 2.0, desk_y - desk_spr_h * 0.15)
+	desk_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(desk_sprite)
 
-	# Monitor bezel (dark frame)
-	var bezel = ColorRect.new()
-	bezel.color = Color(0.12, 0.12, 0.14)
-	bezel.position = Vector2(monitor_rect.position.x - 12, monitor_rect.position.y - 12)
-	bezel.size = Vector2(monitor_rect.size.x + 24, monitor_rect.size.y + 24)
-	add_child(bezel)
+	# === DESK CHAIR (decorative, behind desk) ===
+	var chair_tex = TextureRect.new()
+	chair_tex.texture = preload("res://assets/kenney-furniture/side/chairDesk.png")
+	chair_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var chair_scale = 2.2
+	var chair_w = 60.0 * chair_scale
+	var chair_h = 97.0 * chair_scale
+	chair_tex.custom_minimum_size = Vector2(chair_w, chair_h)
+	chair_tex.size = Vector2(chair_w, chair_h)
+	chair_tex.position = Vector2((vp.x - chair_w) / 2.0, desk_y - chair_h * 0.35)
+	chair_tex.z_index = -1
+	chair_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(chair_tex)
 
-	# Monitor screen (lighter)
-	var screen = ColorRect.new()
-	screen.color = Color(0.15, 0.18, 0.22)
-	screen.position = monitor_rect.position
-	screen.size = monitor_rect.size
-	add_child(screen)
+	# === MONITOR (center, sprite replaces bezel + screen ColorRects) ===
+	var monitor_tex = TextureRect.new()
+	monitor_tex.texture = preload("res://assets/kenney-furniture/side/computerScreen.png")
+	monitor_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# Scale the 71x71 sprite to fill the monitor_rect area (use height as guide)
+	var mon_sprite_scale = mon_h / 71.0
+	var mon_sprite_w = 71.0 * mon_sprite_scale
+	var mon_sprite_h = 71.0 * mon_sprite_scale
+	monitor_tex.custom_minimum_size = Vector2(mon_sprite_w, mon_sprite_h)
+	monitor_tex.size = Vector2(mon_sprite_w, mon_sprite_h)
+	# Center the sprite over the monitor_rect area
+	monitor_tex.position = Vector2(
+		mon_x + (mon_w - mon_sprite_w) / 2.0,
+		mon_y + (mon_h - mon_sprite_h) / 2.0
+	)
+	monitor_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(monitor_tex)
 
-	# Screen content - idle desktop text
+	# Screen content - idle desktop text (kept as-is)
 	var screen_text = Label.new()
 	screen_text.text = "Click to sit down..."
 	screen_text.add_theme_font_size_override("font_size", 16)
@@ -139,7 +151,7 @@ func _build_ui():
 	email_badge.pressed.connect(func(): email_clicked.emit())
 	add_child(email_badge)
 
-	# === PHONE (right side of desk) ===
+	# === PHONE (right side of desk) — stays as ColorRects ===
 	var phone_x = vp.x * (870.0 / REF_W)
 	var phone_y = vp.y * (380.0 / REF_H)
 
@@ -182,20 +194,24 @@ func _build_ui():
 	phone_btn.pressed.connect(func(): phone_clicked.emit())
 	add_child(phone_btn)
 
-	# === BOOKS (left side of desk) ===
+	# === BOOKCASE (left side of desk, replaces book stack) ===
 	var books_x = vp.x * (150.0 / REF_W)
 	var books_base_y = vp.y * (420.0 / REF_H)
 
-	# Book stack (3 books)
-	var book_colors = [Color(0.2, 0.3, 0.6), Color(0.6, 0.25, 0.2), Color(0.2, 0.5, 0.3)]
-	for i in 3:
-		var book = ColorRect.new()
-		book.color = book_colors[i]
-		book.position = Vector2(books_x, books_base_y - i * 18)
-		book.size = Vector2(120, 16)
-		add_child(book)
+	var bookcase_tex = TextureRect.new()
+	bookcase_tex.texture = preload("res://assets/kenney-furniture/side/bookcaseOpen.png")
+	bookcase_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var bookcase_scale = 1.5
+	var bookcase_w = 67.0 * bookcase_scale
+	var bookcase_h = 140.0 * bookcase_scale
+	bookcase_tex.custom_minimum_size = Vector2(bookcase_w, bookcase_h)
+	bookcase_tex.size = Vector2(bookcase_w, bookcase_h)
+	# Position so the bottom of the bookcase sits on the desk area
+	bookcase_tex.position = Vector2(books_x - 10, books_base_y - bookcase_h + 40)
+	bookcase_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bookcase_tex)
 
-	# Books label
+	# Books label (kept)
 	var books_label = Label.new()
 	books_label.text = "Skills"
 	books_label.add_theme_font_size_override("font_size", 12)
@@ -203,7 +219,7 @@ func _build_ui():
 	books_label.position = Vector2(books_x + 35, books_base_y + 20)
 	add_child(books_label)
 
-	# Books click button
+	# Books click button (kept)
 	var books_btn = Button.new()
 	books_btn.flat = true
 	books_btn.position = Vector2(books_x - 10, desk_y + 20)
@@ -212,57 +228,39 @@ func _build_ui():
 	books_btn.pressed.connect(func(): books_clicked.emit())
 	add_child(books_btn)
 
-	# === COFFEE MUG (decorative, left of monitor) ===
+	# === COFFEE MACHINE (decorative, left of monitor, replaces mug) ===
 	var mug_x = vp.x * (320.0 / REF_W)
 	var mug_y = vp.y * (390.0 / REF_H)
 
-	var mug_body = ColorRect.new()
-	mug_body.color = Color(0.85, 0.85, 0.82)
-	mug_body.position = Vector2(mug_x, mug_y)
-	mug_body.size = Vector2(30, 35)
-	add_child(mug_body)
+	var coffee_tex = TextureRect.new()
+	coffee_tex.texture = preload("res://assets/kenney-furniture/side/kitchenCoffeeMachine.png")
+	coffee_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var coffee_scale = 1.8
+	var coffee_w = 35.0 * coffee_scale
+	var coffee_h = 43.0 * coffee_scale
+	coffee_tex.custom_minimum_size = Vector2(coffee_w, coffee_h)
+	coffee_tex.size = Vector2(coffee_w, coffee_h)
+	coffee_tex.position = Vector2(mug_x - 5, mug_y - coffee_h + 40)
+	coffee_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(coffee_tex)
 
-	# Mug handle
-	var mug_handle = ColorRect.new()
-	mug_handle.color = Color(0.85, 0.85, 0.82)
-	mug_handle.position = Vector2(mug_x + 30, mug_y + 8)
-	mug_handle.size = Vector2(10, 18)
-	add_child(mug_handle)
-
-	# Coffee surface
-	var coffee = ColorRect.new()
-	coffee.color = Color(0.35, 0.22, 0.12)
-	coffee.position = Vector2(mug_x + 2, mug_y + 2)
-	coffee.size = Vector2(26, 6)
-	add_child(coffee)
-
-	# === LAPTOP (between books and coffee mug — AI Tools) ===
+	# === LAPTOP (right of monitor on desk — AI Tools) ===
 	var laptop_x = vp.x * (660.0 / REF_W)
 	var laptop_base_y = vp.y * (400.0 / REF_H)
 
-	# Laptop base
-	var laptop_base = ColorRect.new()
-	laptop_base.color = Color(0.28, 0.28, 0.30)
-	laptop_base.position = Vector2(laptop_x, laptop_base_y)
-	laptop_base.size = Vector2(100, 60)
-	add_child(laptop_base)
+	var laptop_tex = TextureRect.new()
+	laptop_tex.texture = preload("res://assets/kenney-furniture/side/laptop.png")
+	laptop_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var laptop_scale = 2.0
+	var laptop_w = 50.0 * laptop_scale
+	var laptop_h = 52.0 * laptop_scale
+	laptop_tex.custom_minimum_size = Vector2(laptop_w, laptop_h)
+	laptop_tex.size = Vector2(laptop_w, laptop_h)
+	laptop_tex.position = Vector2(laptop_x, laptop_base_y - laptop_h + 55)
+	laptop_tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(laptop_tex)
 
-	# Laptop screen (angled up)
-	var laptop_screen = ColorRect.new()
-	laptop_screen.color = Color(0.10, 0.14, 0.22)
-	laptop_screen.position = Vector2(laptop_x + 5, laptop_base_y - 45)
-	laptop_screen.size = Vector2(90, 48)
-	add_child(laptop_screen)
-
-	# Laptop screen bezel
-	var laptop_bezel = ColorRect.new()
-	laptop_bezel.color = Color(0.22, 0.22, 0.24)
-	laptop_bezel.position = Vector2(laptop_x + 2, laptop_base_y - 48)
-	laptop_bezel.size = Vector2(96, 52)
-	laptop_bezel.z_index = -1
-	add_child(laptop_bezel)
-
-	# Laptop label
+	# Laptop label (kept)
 	var laptop_label = Label.new()
 	laptop_label.text = "AI Tools"
 	laptop_label.add_theme_font_size_override("font_size", 11)
@@ -270,7 +268,7 @@ func _build_ui():
 	laptop_label.position = Vector2(laptop_x + 20, laptop_base_y - 32)
 	add_child(laptop_label)
 
-	# Laptop click button
+	# Laptop click button (kept)
 	var laptop_btn = Button.new()
 	laptop_btn.flat = true
 	laptop_btn.position = Vector2(laptop_x, laptop_base_y - 48)
@@ -279,7 +277,7 @@ func _build_ui():
 	laptop_btn.pressed.connect(func(): laptop_clicked.emit())
 	add_child(laptop_btn)
 
-	# === DOOR (on the wall — Hiring / Office) ===
+	# === DOOR (on the wall — stays as ColorRects) ===
 	var door_x = vp.x * (980.0 / REF_W)
 	var door_y = vp.y * (100.0 / REF_H)
 
