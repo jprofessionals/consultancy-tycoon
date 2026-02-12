@@ -361,17 +361,17 @@ func _build_ui():
 	_merge_view.add_theme_constant_override("separation", 4)
 	vbox.add_child(_merge_view)
 
-	var local_panel = _build_merge_column("LOCAL")
-	_merge_view.add_child(local_panel)
-	_merge_local_display = local_panel.get_node("Content")
+	var local_col = _build_merge_column("LOCAL")
+	_merge_view.add_child(local_col[0])
+	_merge_local_display = local_col[1]
 
-	var result_panel = _build_merge_column("RESULT")
-	_merge_view.add_child(result_panel)
-	_merge_result_display = result_panel.get_node("Content")
+	var result_col = _build_merge_column("RESULT")
+	_merge_view.add_child(result_col[0])
+	_merge_result_display = result_col[1]
 
-	var remote_panel = _build_merge_column("REMOTE")
-	_merge_view.add_child(remote_panel)
-	_merge_remote_display = remote_panel.get_node("Content")
+	var remote_col = _build_merge_column("REMOTE")
+	_merge_view.add_child(remote_col[0])
+	_merge_remote_display = remote_col[1]
 
 	# Progress bar
 	progress_bar = ProgressBar.new()
@@ -436,7 +436,7 @@ func _build_keyboard(parent: VBoxContainer):
 	bottom_row.add_child(space_btn)
 	_key_buttons.append(space_btn)
 
-func _build_merge_column(title_text: String) -> PanelContainer:
+func _build_merge_column(title_text: String) -> Array:
 	var panel = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style = StyleBoxFlat.new()
@@ -452,13 +452,12 @@ func _build_merge_column(title_text: String) -> PanelContainer:
 	label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
 	col_vbox.add_child(label)
 	var content = RichTextLabel.new()
-	content.name = "Content"
 	content.bbcode_enabled = true
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_theme_color_override("default_color", Color(0.8, 0.8, 0.8))
 	content.add_theme_font_size_override("normal_font_size", 12)
 	col_vbox.add_child(content)
-	return panel
+	return [panel, content]
 
 func _create_key_button(key_label: String) -> Button:
 	var btn = Button.new()
