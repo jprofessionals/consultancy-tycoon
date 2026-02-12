@@ -72,16 +72,32 @@ func _try_act(tool: AiToolData, tier: int, coding_loop: CodingLoop, is_focused: 
 				if bus:
 					bus.ai_tool_acted.emit(tool.id, "review", success)
 		"conflict":
-			if coding_loop.state == CodingLoop.State.CONFLICT:
-				if success:
-					coding_loop.resolve_conflict(coding_loop.conflict_correct_side)
-				else:
-					var wrong_side = "right" if coding_loop.conflict_correct_side == "left" else "left"
-					coding_loop.resolve_conflict(wrong_side)
-					if not is_focused:
-						tab.stuck = true
-						if bus:
-							bus.tab_stuck.emit(tab_index)
+			if coding_loop.state == CodingLoop.State.CONFLICT and coding_loop.merge_conflict != null:
+				# Auto-merge if not yet done
+				if not coding_loop.merge_conflict.auto_merged:
+					coding_loop.auto_merge()
+				# Resolve next unresolved chunk
+				var idx = coding_loop.merge_conflict.get_next_unresolved_index()
+				if idx >= 0:
+					var chunk: ConflictChunk = coding_loop.merge_conflict.chunks[idx]
+					if success:
+						if chunk.correct_resolution != "":
+							coding_loop.resolve_merge_chunk(chunk.correct_resolution)
+						else:
+							var options = ["local", "remote", "both"]
+							coding_loop.resolve_merge_chunk(options[randi() % 3])
+					else:
+						if chunk.correct_resolution != "":
+							var wrong_options = ["local", "remote", "both"]
+							wrong_options.erase(chunk.correct_resolution)
+							coding_loop.resolve_merge_chunk(wrong_options[randi() % wrong_options.size()])
+						else:
+							var options = ["local", "remote", "both"]
+							coding_loop.resolve_merge_chunk(options[randi() % 3])
+						if not is_focused:
+							tab.stuck = true
+							if bus:
+								bus.tab_stuck.emit(tab_index)
 				acted = true
 				if bus:
 					bus.ai_tool_acted.emit(tool.id, "conflict", success)

@@ -95,3 +95,29 @@ func test_runner_progresses_writing():
 		runner.tick(1.0, [tab], 0, state)
 	# Progress should have advanced (auto_writer clicked at least once)
 	assert_gt(tab.coding_loop.progress, 0.0, "Copilot should have made some progress")
+
+func test_ai_merger_auto_merges_and_resolves_chunks():
+	state.money = 999999.0
+	var merge_tool = manager.get_tool("merge_resolver")
+	for i in range(merge_tool.max_tier):
+		manager.try_upgrade(merge_tool, state)
+	var tab = CodingTab.new()
+	var task = load("res://src/data/coding_task.gd").new()
+	task.difficulty = 1
+	task.total_clicks = 1
+	tab.coding_loop.start_task(task)
+	tab.coding_loop.state = CodingLoop.State.CONFLICT
+	var conflict = MergeConflict.new()
+	conflict.base_lines = ["line1"]
+	var chunk = ConflictChunk.new()
+	chunk.local_lines = ["local"]
+	chunk.remote_lines = ["remote"]
+	chunk.correct_resolution = "local"
+	conflict.chunks = [chunk]
+	conflict.chunk_positions = [0]
+	tab.coding_loop.merge_conflict = conflict
+	var runner = load("res://src/logic/ai_tool_runner.gd").new(manager)
+	for i in range(10):
+		runner.tick(1.0, [tab], 0, state)
+	assert_ne(tab.coding_loop.state, CodingLoop.State.CONFLICT,
+		"AI should have resolved the conflict")
