@@ -164,6 +164,10 @@ var _back_door: ColorRect
 var _back_door_label: Label
 
 
+func _get_vp() -> Vector2:
+	return get_viewport_rect().size if is_inside_tree() else Vector2(1152.0, 648.0)
+
+
 func _ready():
 	_build_office()
 
@@ -176,17 +180,18 @@ func _build_office():
 	add_child(floor_bg)
 
 	# Wall strip (below HUD)
+	var vp = _get_vp()
 	var wall = ColorRect.new()
 	wall.color = WALL_COLOR
 	wall.position = Vector2(0, WALL_TOP)
-	wall.size = Vector2(1152, WALL_HEIGHT)
+	wall.size = Vector2(vp.x, WALL_HEIGHT)
 	add_child(wall)
 
 	# Wall base molding
 	var molding = ColorRect.new()
 	molding.color = Color(0.3, 0.32, 0.35)
 	molding.position = Vector2(0, WALL_TOP + WALL_HEIGHT - 4)
-	molding.size = Vector2(1152, 4)
+	molding.size = Vector2(vp.x, 4)
 	add_child(molding)
 
 	# === WALL OBJECTS ===
@@ -199,7 +204,8 @@ func _build_office():
 func _build_wall_objects():
 	var wall_y = WALL_TOP + 7.0
 	var obj_height = WALL_HEIGHT - 14.0
-	var spacing = 1152.0 / 6.0
+	var vp = _get_vp()
+	var spacing = vp.x / 6.0
 
 	# 1) "Back to Desk" door (left side)
 	var door_ctrl = _create_interactive_object(
@@ -329,7 +335,9 @@ func _build_desks():
 	_desk_nodes.clear()
 
 	var desk_count: int = GameState.desk_capacity
-	var grid_start = Vector2(80, DESK_AREA_TOP)
+	var vp = _get_vp()
+	var total_width = DESK_COLUMNS * DESK_SPACING.x
+	var grid_start = Vector2((vp.x - total_width) * 0.5, DESK_AREA_TOP)
 
 	for i in desk_count:
 		var col = i % DESK_COLUMNS
