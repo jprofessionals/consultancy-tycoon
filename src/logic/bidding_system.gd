@@ -42,23 +42,47 @@ func get_difficulty_modifier(contract: ClientContract, player_skills: Dictionary
 		total_gap += maxf(required - player_level, 0)
 	return 1.0 + total_gap * 0.3
 
+func _generate_contract(tier: int, task_multiplier: float = 1.0) -> ClientContract:
+	var contract = ClientContract.new()
+	contract.client_name = CLIENT_NAMES[randi() % CLIENT_NAMES.size()]
+	contract.project_description = PROJECT_TYPES[randi() % PROJECT_TYPES.size()]
+	contract.tier = tier
+	var base_tasks = contract.tier * 15 + randi_range(9, 36)
+	if contract.tier <= 2:
+		base_tasks = base_tasks / 2
+	base_tasks = int(base_tasks * task_multiplier)
+	contract.task_count = base_tasks
+	contract.payout_per_task = contract.tier * 25.0 + randf_range(0, contract.tier * 15.0)
+	var num_skills = randi_range(1, mini(2, SKILL_POOL.size()))
+	var shuffled = SKILL_POOL.duplicate()
+	shuffled.shuffle()
+	for j in range(num_skills):
+		contract.required_skills[shuffled[j]] = randi_range(1, contract.tier * 2)
+	contract.duration = 120.0 - contract.tier * 15.0
+	return contract
+
 func generate_contracts(count: int, reputation: float) -> Array[ClientContract]:
 	var contracts: Array[ClientContract] = []
 	var max_tier = clampi(int(reputation / 20.0) + 1, 1, 4)
 	for i in range(count):
-		var contract = ClientContract.new()
-		contract.client_name = CLIENT_NAMES[randi() % CLIENT_NAMES.size()]
-		contract.project_description = PROJECT_TYPES[randi() % PROJECT_TYPES.size()]
-		contract.tier = clampi(randi_range(1, max_tier), 1, 4)
-		contract.task_count = contract.tier * 2 + randi_range(1, 3)
-		contract.payout_per_task = contract.tier * 25.0 + randf_range(0, contract.tier * 15.0)
-		var num_skills = randi_range(1, mini(2, SKILL_POOL.size()))
-		var shuffled = SKILL_POOL.duplicate()
-		shuffled.shuffle()
-		for j in range(num_skills):
-			contract.required_skills[shuffled[j]] = randi_range(1, contract.tier * 2)
-		contract.duration = 120.0 - contract.tier * 15.0
-		contracts.append(contract)
+		var tier = clampi(randi_range(1, max_tier), 1, 4)
+		contracts.append(_generate_contract(tier))
+	return contracts
+
+func generate_personal_contracts(count: int, reputation: float) -> Array[ClientContract]:
+	var contracts: Array[ClientContract] = []
+	var max_tier = clampi(int(reputation / 20.0) + 1, 1, 2)
+	for i in range(count):
+		var tier = clampi(randi_range(1, max_tier), 1, 2)
+		contracts.append(_generate_contract(tier))
+	return contracts
+
+func generate_management_contracts(count: int, reputation: float) -> Array[ClientContract]:
+	var contracts: Array[ClientContract] = []
+	var max_tier = clampi(int(reputation / 20.0) + 1, 2, 4)
+	for i in range(count):
+		var tier = clampi(randi_range(2, max_tier), 2, 4)
+		contracts.append(_generate_contract(tier, 1.5))
 	return contracts
 
 func attempt_bid(contract: ClientContract, player_skills: Dictionary) -> bool:
