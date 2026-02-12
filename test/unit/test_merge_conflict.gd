@@ -126,3 +126,48 @@ func test_auto_merged_flag():
 	assert_false(conflict.auto_merged)
 	conflict.auto_merged = true
 	assert_true(conflict.auto_merged)
+
+# ── Factory Tests ──
+
+func test_factory_generates_conflict_for_tier_1():
+	var factory = MergeConflictFactory.new()
+	var conflict = factory.generate(1)
+	assert_gt(conflict.base_lines.size(), 0, "Should have base lines")
+	assert_eq(conflict.chunks.size(), 1, "Tier 1 should have 1 chunk")
+	assert_eq(conflict.chunks[0].correct_resolution, "", "Tier 1 chunk should accept any resolution")
+
+func test_factory_generates_more_chunks_for_higher_tier():
+	var factory = MergeConflictFactory.new()
+	var found_multi = false
+	for i in range(20):
+		var conflict = factory.generate(3)
+		if conflict.chunks.size() > 1:
+			found_multi = true
+			break
+	assert_true(found_multi, "Higher tiers should sometimes have multiple chunks")
+
+func test_factory_tier3_has_tricky_chunks():
+	var factory = MergeConflictFactory.new()
+	var found_tricky = false
+	for i in range(20):
+		var conflict = factory.generate(4)
+		for chunk in conflict.chunks:
+			if chunk.correct_resolution != "":
+				found_tricky = true
+				break
+		if found_tricky:
+			break
+	assert_true(found_tricky, "High tier should have tricky chunks with correct answers")
+
+func test_factory_chunk_positions_are_valid():
+	var factory = MergeConflictFactory.new()
+	var conflict = factory.generate(3)
+	for pos in conflict.chunk_positions:
+		assert_true(pos >= 0 and pos <= conflict.base_lines.size(),
+			"Chunk position should be within base_lines range")
+
+func test_factory_local_and_remote_differ():
+	var factory = MergeConflictFactory.new()
+	var conflict = factory.generate(2)
+	for chunk in conflict.chunks:
+		assert_ne(chunk.local_lines, chunk.remote_lines, "Local and remote should differ")
