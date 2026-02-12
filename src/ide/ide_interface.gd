@@ -43,6 +43,106 @@ const REVIEW_CHANGES = [
 	["    # REVIEW: use constant instead", "    var TIMEOUT = 30  # was hardcoded 60"],
 	["    # FIX: sanitize input first", "    value = value.strip_edges()", "    value = value.replace(\";\", \"\")"],
 	["    # CHANGED: wrong variable name", "    var user_id = get_current_user()  # was 'uid'"],
+	["    # FIX: prevent division by zero", "    if count == 0:", "        return 0.0", "    return total / count"],
+	["    # REVIEW: extract magic number", "    const MAX_RETRIES = 3  # was hardcoded"],
+	["    # BUG: close file handle", "    var file = FileAccess.open(path, FileAccess.READ)", "    var data = file.get_as_text()", "    file.close()  # was missing"],
+	["    # FIXME: validate array bounds", "    if index < 0 or index >= items.size():", "        return null", "    return items[index]"],
+	["    # TODO: escape SQL parameter", "    name = name.replace(\"'\", \"''\")", "    query = \"SELECT * FROM users WHERE name = '%s'\" % name"],
+	["    # BUG: use equality not assignment", "    if status == \"active\":  # was status = \"active\"", "        process_order()"],
+	["    # FIX: await async call", "    var result = await http.request(url)  # was missing await", "    return result.body"],
+	["    # REVIEW: reduce cyclomatic complexity", "    var handlers = {", "        \"start\": _handle_start,", "        \"stop\": _handle_stop,", "    }", "    handlers.get(action, _handle_default).call()"],
+	["    # FIXME: wrong comparison operator", "    if temperature >= BOILING_POINT:  # was > (off-by-one)"],
+	["    # BUG: shallow copy causes mutation", "    var copy = original.duplicate(true)  # was duplicate() — deep copy needed"],
+	["    # TODO: add timeout to request", "    http.timeout = 30.0  # was no timeout set", "    var response = await http.request(url)"],
+	["    # FIX: integer overflow on 32-bit", "    var total: int = 0", "    total = clampi(total + amount, 0, 2147483647)"],
+	["    # REVIEW: use StringName for signal", "    signal_name = &\"player_died\"  # was \"player_died\""],
+	["    # BUG: race condition in timer", "    if _timer_running:", "        return  # was missing guard", "    _timer_running = true", "    await get_tree().create_timer(1.0).timeout"],
+	["    # FIX: handle empty dictionary", "    if config.is_empty():", "        return defaults", "    return config.merge(defaults)"],
+	["    # CHANGED: use is_equal_approx for floats", "    if is_equal_approx(a, b):  # was a == b", "        return true"],
+	["    # REVIEW: add default case to match", "    match state:", "        State.IDLE: pass", "        State.RUNNING: process()", "        _: push_warning(\"Unknown state\")  # was missing"],
+	["    # BUG: off-by-one in substring", "    var ext = filename.substr(dot_pos + 1)  # was dot_pos"],
+	["    # FIXME: memory leak — free old node", "    if old_child:", "        old_child.queue_free()  # was missing", "    add_child(new_child)"],
+	["    # TODO: validate email format", "    if \"@\" not in email or \".\" not in email:", "        return {\"error\": \"Invalid email\"}", "    # proceed with registration"],
+	["    # FIX: check for null before access", "    if node and node.is_inside_tree():", "        node.visible = false  # was crashing on null"],
+	["    # REVIEW: use constant time comparison", "    var match = Crypto.constant_time_compare(hash_a, hash_b)", "    # was hash_a == hash_b (timing attack)"],
+	["    # BUG: forgot to increment counter", "    retry_count += 1  # was missing", "    if retry_count >= MAX_RETRIES:", "        return Error.TIMEOUT"],
+	["    # FIXME: thread safety issue", "    _mutex.lock()", "    var value = _shared_data[key]", "    _mutex.unlock()  # was not using mutex", "    return value"],
+	["    # FIX: handle negative input", "    amount = max(amount, 0.0)  # was allowing negative", "    balance -= amount"],
+	["    # TODO: remove debug print", "    # print(\"DEBUG: \", response)  # removed", "    return parse_response(response)"],
+	["    # REVIEW: simplify boolean expression", "    return age >= 18  # was: if age >= 18: return true; else: return false"],
+	["    # BUG: infinite loop without break", "    while queue.size() > 0:", "        var item = queue.pop_front()", "        if item == target:", "            break  # was missing break"],
+	["    # FIX: wrong string concatenation", "    var path = base_url + \"/\" + endpoint  # was base_url + endpoint"],
+	["    # CHANGED: use Array.map instead of loop", "    var names = users.map(func(u): return u.name)", "    # was: for u in users: names.append(u.name)"],
+	["    # FIXME: signal connected twice", "    if not button.pressed.is_connected(_on_pressed):", "        button.pressed.connect(_on_pressed)"],
+	["    # BUG: modifying array during iteration", "    for item in items.duplicate():  # was iterating original", "        if item.expired:", "            items.erase(item)"],
+	["    # REVIEW: cache expensive computation", "    if _cached_result == null:", "        _cached_result = _expensive_calculation()", "    return _cached_result"],
+	["    # FIX: clamp value to valid range", "    volume = clamp(volume, 0.0, 1.0)  # was unbounded", "    AudioServer.set_bus_volume_db(0, linear_to_db(volume))"],
+	["    # TODO: add input validation", "    if username.length() < 3 or username.length() > 32:", "        return {\"error\": \"Username must be 3-32 characters\"}"],
+	["    # BUG: using = instead of == in condition", "    while current_node != null:  # was current_node = null", "        current_node = current_node.parent"],
+	["    # FIXME: wrong signal parameter order", "    damage_dealt.emit(target, amount)  # was (amount, target)"],
+	["    # FIX: UTC timestamp not local", "    var timestamp = Time.get_unix_time_from_system()  # was get_ticks_msec"],
+	["    # REVIEW: use StringName for dictionary keys", "    var stats = {&\"health\": 100, &\"mana\": 50}  # was String keys"],
+	["    # BUG: return inside loop skips items", "    var results = []", "    for item in collection:", "        results.append(process(item))", "    return results  # was returning inside loop"],
+	["    # CHANGED: use early return pattern", "    if not is_valid:", "        return  # was nested in else block", "    process_data()"],
+	["    # FIXME: resource leak in error path", "    var file = FileAccess.open(path, FileAccess.WRITE)", "    if not data:", "        file.close()  # was missing close before return", "        return ERR_INVALID_DATA"],
+	["    # TODO: add rate limiting", "    if _requests_this_second >= MAX_RPS:", "        return {\"error\": \"Rate limit exceeded\"}", "    _requests_this_second += 1"],
+	["    # FIX: normalize path for cross-platform", "    path = path.replace(\"\\\\\", \"/\")  # was Windows-only paths", "    path = path.simplify_path()"],
+	["    # BUG: wrong hash function for security", "    var hash = password.sha256_text()  # was md5 — too weak", "    return hash + \":\" + salt"],
+	["    # REVIEW: use @export instead of hardcoded", "    @export var speed: float = 200.0  # was const SPEED = 200"],
+	["    # FIXME: z-index conflict", "    popup.z_index = 100  # was same as parent, hidden behind"],
+	["    # BUG: delta time not applied", "    position += velocity * delta  # was velocity only", "    rotation += angular_velocity * delta"],
+	["    # FIX: handle disconnected signal", "    if target.is_connected(\"destroyed\", _on_destroyed):", "        target.disconnect(\"destroyed\", _on_destroyed)"],
+	["    # CHANGED: use @onready for node ref", "    @onready var sprite = $Sprite2D  # was get_node in _ready"],
+	["    # TODO: add fallback font", "    var font = load(font_path)", "    if not font:", "        font = ThemeDB.fallback_font  # was crashing on null"],
+	["    # BUG: gravity applied twice", "    # velocity.y += gravity * delta  # removed duplicate", "    velocity = move_and_slide()"],
+	["    # REVIEW: batch database operations", "    db.begin_transaction()", "    for record in records:", "        db.insert(record)", "    db.commit()  # was individual commits"],
+	["    # FIXME: typo in variable name", "    var response = fetch_data()  # was 'reponse'", "    return response.body"],
+	["    # FIX: prevent double-free", "    if is_instance_valid(node):", "        node.queue_free()  # was not checking validity"],
+	["    # BUG: string comparison is case-sensitive", "    if input.to_lower() == expected.to_lower():  # was direct ==", "        return true"],
+	["    # CHANGED: use ternary for clarity", "    var label = \"Active\" if is_active else \"Inactive\"", "    # was: if is_active: label = \"Active\" else: label = \"Inactive\""],
+	["    # TODO: add logging", "    Logger.info(\"Processing order %s\" % order_id)", "    var result = process_order(order_id)", "    Logger.info(\"Order %s completed: %s\" % [order_id, result])"],
+	["    # FIXME: viewport size not updated", "    var size = get_viewport().get_visible_rect().size  # was get_size()"],
+	["    # FIX: enum comparison was using int", "    if state == State.PAUSED:  # was state == 2", "        show_pause_menu()"],
+	["    # BUG: timer not stopped on exit", "    func _exit_tree():", "        if _timer:", "            _timer.stop()  # was leaking timer"],
+	["    # REVIEW: use const for immutable data", "    const DIRECTIONS = [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]", "    # was: var directions = [...]"],
+	["    # FIXME: rounding error in currency", "    var total = snapped(subtotal + tax, 0.01)  # was raw float"],
+	["    # BUG: collision layer mismatch", "    collision_layer = 2  # was 1 (same as player)", "    collision_mask = 1"],
+	["    # FIX: array index out of bounds", "    var last = items.back() if not items.is_empty() else null", "    # was items[items.size() - 1] on empty array"],
+	["    # CHANGED: use preload for static resources", "    const ICON = preload(\"res://assets/icon.png\")  # was load() at runtime"],
+	["    # TODO: add error boundary", "    var result = null", "    if data.has(\"key\"):", "        result = data[\"key\"]  # was accessing without check"],
+	["    # BUG: event consumed by wrong handler", "    get_viewport().set_input_as_handled()  # was propagating"],
+	["    # REVIEW: replace print with push_warning", "    push_warning(\"Deprecated function called\")  # was print()"],
+	["    # FIXME: tween not freed after completion", "    var tween = create_tween()", "    tween.tween_property(self, \"modulate:a\", 0.0, 0.5)", "    tween.tween_callback(queue_free)  # was orphaning tween"],
+	["    # FIX: missing super call", "    func _ready():", "        super._ready()  # was missing", "        _initialize()"],
+	["    # BUG: wrong operator precedence", "    var result = (a + b) * c  # was a + b * c", "    return result"],
+	["    # CHANGED: use PackedScene for instancing", "    var scene = preload(\"res://enemy.tscn\")", "    var instance = scene.instantiate()  # was .new()"],
+	["    # TODO: debounce input", "    if Time.get_ticks_msec() - _last_input < 100:", "        return  # was processing every frame"],
+	["    # FIXME: wrong pivot point", "    sprite.offset = -sprite.texture.get_size() / 2  # was Vector2.ZERO"],
+	["    # BUG: unreachable code after return", "    return result", "    # cleanup()  # removed — was never called"],
+	["    # FIX: physics runs in _physics_process", "    # moved from _process to _physics_process", "    func _physics_process(delta):", "        velocity += gravity * delta"],
+	["    # REVIEW: use typed array", "    var enemies: Array[Enemy] = []  # was untyped Array"],
+	["    # BUG: dictionary key missing quotes", "    var config = {\"host\": \"localhost\", \"port\": 8080}", "    # was {host: \"localhost\"} — invalid in strict mode"],
+	["    # CHANGED: use lerp for smooth movement", "    position = position.lerp(target, delta * 5.0)", "    # was position = target (snapping)"],
+	["    # FIXME: alpha not reset after fade", "    modulate.a = 1.0  # was staying at 0 after fade-in"],
+	["    # FIX: circular reference causing leak", "    _callback = Callable()  # clear reference on cleanup", "    # was holding strong ref to parent"],
+	["    # TODO: clamp rotation angle", "    rotation = wrapf(rotation, -PI, PI)  # was accumulating forever"],
+	["    # BUG: wrong signal name string", "    connect(&\"area_entered\", _on_area_entered)  # was \"body_entered\""],
+	["    # REVIEW: null coalescing pattern", "    var name = config.get(\"name\", \"Unknown\")", "    # was: if config.has(\"name\"): name = config[\"name\"]"],
+	["    # FIXME: texture filter causing blur", "    texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # was LINEAR"],
+	["    # FIX: mouse event not reaching child", "    mouse_filter = Control.MOUSE_FILTER_PASS  # was STOP"],
+	["    # BUG: color channels swapped", "    var color = Color(r, g, b)  # was Color(b, g, r)"],
+	["    # CHANGED: use move_toward instead of lerp", "    speed = move_toward(speed, max_speed, accel * delta)", "    # was lerp — doesn't respect delta properly"],
+	["    # TODO: handle window resize", "    get_viewport().size_changed.connect(_on_resize)", "    # was using hardcoded screen dimensions"],
+	["    # FIXME: animation not looping", "    animation_player.play(\"walk\")", "    # was play(\"walk\", -1, 1.0, false) — looping disabled"],
+	["    # BUG: particles emitting while invisible", "    if not visible:", "        particles.emitting = false  # was always emitting", "        return"],
+	["    # FIX: shader parameter type mismatch", "    material.set_shader_parameter(\"speed\", float(speed))", "    # was passing int to float uniform"],
+	["    # REVIEW: use group for batch operations", "    get_tree().call_group(\"enemies\", \"take_damage\", amount)", "    # was: for e in enemies: e.take_damage(amount)"],
+	["    # BUG: save file not flushed", "    file.store_string(JSON.stringify(data))", "    file.flush()  # was missing — data loss on crash", "    file.close()"],
+	["    # CHANGED: bitwise flag check", "    if flags & FLAG_INVINCIBLE:  # was flags == FLAG_INVINCIBLE", "        return  # blocks all damage"],
+	["    # TODO: sanitize user display name", "    display_name = display_name.strip_edges()", "    display_name = display_name.substr(0, 64)  # was unbounded"],
+	["    # BUG: camera zoom inverted", "    zoom = Vector2(1.0 / level, 1.0 / level)  # was Vector2(level, level)"],
+	["    # FIXME: wrong array method", "    items.append(new_item)  # was push_back — append is idiomatic GDScript"],
+	["    # FIX: missing return type annotation", "    func get_health() -> float:  # was func get_health():", "        return _health"],
 ]
 
 func _ready():
@@ -568,12 +668,16 @@ func _sync_code_to_progress(progress: float, tab: CodingTab = null):
 	if tab.code_snippet.is_empty():
 		return
 	var target_lines = ceili(progress * tab.code_snippet.size())
+	var added_lines = false
 	while tab.lines_revealed < target_lines and tab.lines_revealed < tab.code_snippet.size():
 		var line = tab.code_snippet[tab.lines_revealed]
 		var colored = _syntax_highlight(line)
 		if _is_focused_tab(tab):
 			code_display.append_text(colored + "\n")
+			added_lines = true
 		tab.lines_revealed += 1
+	if added_lines:
+		code_display.scroll_to_line(code_display.get_line_count())
 
 func _syntax_highlight(line: String) -> String:
 	var result = line
@@ -607,6 +711,9 @@ func _inject_review_changes():
 	code_display.append_text("\n")
 	for line in change:
 		code_display.append_text("[color=#f4a460]" + line + "[/color]\n")
+	# Scroll to bottom so the review changes are visible
+	await get_tree().process_frame
+	code_display.scroll_to_line(code_display.get_line_count())
 
 func _show_review_comment(text: String):
 	for child in review_panel.get_children():
