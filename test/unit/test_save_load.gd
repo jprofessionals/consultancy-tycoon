@@ -247,6 +247,49 @@ func test_round_trip_coding_loop():
 	assert_eq(new_loop.current_task.difficulty, 5)
 	assert_almost_eq(new_loop.current_task.payout, 200.0, 0.01)
 
+func test_serialize_coding_loop_with_merge_conflict():
+	var loop = CodingLoop.new()
+	var task = CodingTask.new()
+	task.title = "Test"
+	task.difficulty = 2
+	task.total_clicks = 5
+	loop.start_task(task)
+	loop.state = CodingLoop.State.CONFLICT
+	var conflict = MergeConflict.new()
+	conflict.base_lines = ["line1", "line2"]
+	conflict.auto_merged = true
+	var chunk = ConflictChunk.new()
+	chunk.local_lines = ["local"]
+	chunk.remote_lines = ["remote"]
+	chunk.correct_resolution = "local"
+	conflict.chunks = [chunk]
+	conflict.chunk_positions = [1]
+	conflict.resolutions = ["local"]
+	loop.merge_conflict = conflict
+	var data = save_mgr.serialize_coding_loop(loop)
+	assert_true(data.has("merge_conflict"))
+	var loop2 = CodingLoop.new()
+	save_mgr.deserialize_coding_loop(loop2, data)
+	assert_not_null(loop2.merge_conflict)
+	assert_eq(loop2.merge_conflict.base_lines, ["line1", "line2"])
+	assert_eq(loop2.merge_conflict.chunks.size(), 1)
+	assert_eq(loop2.merge_conflict.resolutions, ["local"])
+	assert_true(loop2.merge_conflict.auto_merged)
+
+func test_serialize_coding_loop_without_merge_conflict():
+	var loop = CodingLoop.new()
+	var task = CodingTask.new()
+	task.title = "No Conflict"
+	task.difficulty = 1
+	task.total_clicks = 3
+	loop.start_task(task)
+	loop.state = CodingLoop.State.WRITING
+	var data = save_mgr.serialize_coding_loop(loop)
+	assert_false(data.has("merge_conflict"))
+	var loop2 = CodingLoop.new()
+	save_mgr.deserialize_coding_loop(loop2, data)
+	assert_null(loop2.merge_conflict)
+
 # ── Backward compatibility ──
 
 func test_backward_compat_old_save_format():

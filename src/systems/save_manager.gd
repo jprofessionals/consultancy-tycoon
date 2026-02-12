@@ -210,6 +210,36 @@ func _deserialize_task(d: Dictionary) -> CodingTask:
 	t.required_skills = d.get("required_skills", {}).duplicate()
 	return t
 
+func _serialize_merge_conflict(conflict: MergeConflict) -> Dictionary:
+	var chunks_data = []
+	for chunk in conflict.chunks:
+		chunks_data.append({
+			"local_lines": chunk.local_lines,
+			"remote_lines": chunk.remote_lines,
+			"correct_resolution": chunk.correct_resolution,
+		})
+	return {
+		"base_lines": conflict.base_lines,
+		"chunks": chunks_data,
+		"chunk_positions": conflict.chunk_positions,
+		"resolutions": conflict.resolutions,
+		"auto_merged": conflict.auto_merged,
+	}
+
+func _deserialize_merge_conflict(d: Dictionary) -> MergeConflict:
+	var conflict = MergeConflict.new()
+	conflict.base_lines = Array(d.get("base_lines", []))
+	conflict.chunk_positions = Array(d.get("chunk_positions", []))
+	conflict.resolutions = Array(d.get("resolutions", []))
+	conflict.auto_merged = bool(d.get("auto_merged", false))
+	for cd in d.get("chunks", []):
+		var chunk = ConflictChunk.new()
+		chunk.local_lines = Array(cd.get("local_lines", []))
+		chunk.remote_lines = Array(cd.get("remote_lines", []))
+		chunk.correct_resolution = str(cd.get("correct_resolution", ""))
+		conflict.chunks.append(chunk)
+	return conflict
+
 func _serialize_assignment(a: ConsultantAssignment) -> Dictionary:
 	var consultant_ids: Array = []
 	for c in a.consultants:
@@ -270,12 +300,15 @@ func _deserialize_rental(d: Dictionary, all_consultants: Array) -> ConsultantRen
 func serialize_coding_loop(loop: CodingLoop) -> Dictionary:
 	if loop.state == CodingLoop.State.IDLE or loop.current_task == null:
 		return {}
-	return {
+	var data = {
 		"state": loop.state,
 		"progress": loop.progress,
 		"review_changes_needed": loop.review_changes_needed,
 		"current_task": _serialize_task(loop.current_task),
 	}
+	if loop.merge_conflict != null:
+		data["merge_conflict"] = _serialize_merge_conflict(loop.merge_conflict)
+	return data
 
 func deserialize_coding_loop(loop: CodingLoop, d: Dictionary) -> void:
 	if d.is_empty():
@@ -285,8 +318,9 @@ func deserialize_coding_loop(loop: CodingLoop, d: Dictionary) -> void:
 	loop.current_task = task
 	loop.progress = float(d.get("progress", 0.0))
 	loop.review_changes_needed = int(d.get("review_changes_needed", 0))
-	# Note: merge_conflict is not serialized yet (Task 5)
-	# Restore state directly (bypass _set_state to avoid emitting during load)
+	loop.merge_conflict = null
+	if d.has("merge_conflict"):
+		loop.merge_conflict = _deserialize_merge_conflict(d["merge_conflict"])
 	loop.state = int(d.get("state", CodingLoop.State.IDLE))
 
 # ── Multi-Tab Serialization ──
