@@ -8,6 +8,8 @@ var office_unlocked: bool = false
 var consultants: Array = []  # Array of ConsultantData
 var active_assignments: Array = []  # Array of ConsultantAssignment
 var claimed_easter_eggs: Dictionary = {}  # easter_egg_id -> true
+var desk_capacity: int = 4
+var active_rentals: Array = []  # Array of ConsultantRental
 
 func _get_event_bus() -> Node:
 	return Engine.get_main_loop().root.get_node_or_null("EventBus") if Engine.get_main_loop() else null
@@ -83,3 +85,29 @@ func get_total_salary() -> float:
 	for c in consultants:
 		total += c.salary
 	return total
+
+func add_rental(rental: ConsultantRental) -> void:
+	active_rentals.append(rental)
+
+func remove_rental(rental: ConsultantRental) -> void:
+	active_rentals.erase(rental)
+
+func get_max_staff() -> int:
+	return desk_capacity * 3
+
+func can_hire() -> bool:
+	return consultants.size() < get_max_staff()
+
+func get_consultants_by_location(loc: int) -> Array:
+	var result: Array = []
+	for c in consultants:
+		if c.location == loc:
+			result.append(c)
+	return result
+
+func get_available_consultants() -> Array:
+	var result: Array = []
+	for c in consultants:
+		if c.is_available():
+			result.append(c)
+	return result

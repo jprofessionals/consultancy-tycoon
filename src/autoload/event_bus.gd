@@ -31,3 +31,16 @@ signal consultant_hired(consultant)
 signal consultant_left(consultant)
 signal assignment_completed(assignment)
 signal management_issue(issue)
+
+# Management scene signals
+signal rental_started(rental)
+signal rental_completed(rental)
+signal rental_extension_available(rental)
+signal consultant_training_started(consultant, skill_id)
+signal consultant_location_changed(consultant, new_location)
+signal scene_switch_requested(scene_name)
+
+# Multi-tab signals
+signal tab_stuck(tab_index: int)
+signal tab_unstuck(tab_index: int)
+signal tab_task_done(task: CodingTask, tab: CodingTab)
