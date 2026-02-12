@@ -164,8 +164,11 @@ var _back_door: ColorRect
 var _back_door_label: Label
 
 
+const REF_W = 1152.0
+const REF_H = 648.0
+
 func _get_vp() -> Vector2:
-	return get_viewport_rect().size if is_inside_tree() else Vector2(1152.0, 648.0)
+	return get_viewport_rect().size if is_inside_tree() else Vector2(REF_W, REF_H)
 
 
 func _ready():
