@@ -7,17 +7,22 @@ var state: State = State.IDLE
 var progress: float = 0.0
 var current_task: CodingTask = null
 var review_changes_needed: int = 0
-var conflict_correct_side: String = ""
+var merge_conflict: MergeConflict = null
 
 signal state_changed(new_state: State)
 signal progress_changed(new_progress: float)
 signal review_result(approved: bool, comment: String)
-signal conflict_appeared(left_code: String, right_code: String)
+signal merge_conflict_started(conflict: MergeConflict)
+signal merge_auto_merged()
+signal merge_chunk_resolved(chunk_index: int, was_correct: bool)
 signal task_done(task: CodingTask)
+
+var _conflict_factory: MergeConflictFactory = MergeConflictFactory.new()
 
 func start_task(task: CodingTask) -> void:
 	current_task = task
 	progress = 0.0
+	merge_conflict = null
 	_set_state(State.WRITING)
 
 func perform_click(click_power: float) -> void:
@@ -54,17 +59,34 @@ func _check_for_conflict() -> void:
 		_complete_task()
 
 func _setup_conflict() -> void:
-	conflict_correct_side = "left" if randi() % 2 == 0 else "right"
-	conflict_appeared.emit("<<<< LOCAL\nvar result = validate()", "<<<< REMOTE\nvar result = check()")
+	var tier = current_task.difficulty
+	merge_conflict = _conflict_factory.generate(clampi(tier, 1, 5))
+	merge_conflict_started.emit(merge_conflict)
 
-func resolve_conflict(chosen_side: String) -> void:
-	if state != State.CONFLICT:
+func auto_merge() -> void:
+	if state != State.CONFLICT or merge_conflict == null:
 		return
-	if chosen_side == conflict_correct_side:
-		_complete_task()
-	else:
-		review_changes_needed = 1
-		_set_state(State.FIXING)
+	merge_conflict.auto_merged = true
+	merge_auto_merged.emit()
+
+func resolve_merge_chunk(resolution: String) -> void:
+	if state != State.CONFLICT or merge_conflict == null:
+		return
+	if not merge_conflict.auto_merged:
+		return
+	var idx = merge_conflict.get_next_unresolved_index()
+	if idx < 0:
+		return
+	merge_conflict.resolve_chunk(idx, resolution)
+	var chunk: ConflictChunk = merge_conflict.chunks[idx]
+	var was_correct = chunk.correct_resolution == "" or resolution == chunk.correct_resolution
+	merge_chunk_resolved.emit(idx, was_correct)
+	if merge_conflict.all_resolved():
+		if merge_conflict.has_wrong_resolution():
+			review_changes_needed = merge_conflict.get_wrong_count()
+			_set_state(State.FIXING)
+		else:
+			_complete_task()
 
 func _complete_task() -> void:
 	_set_state(State.COMPLETE)
@@ -79,6 +101,7 @@ func reset() -> void:
 	state = State.IDLE
 	progress = 0.0
 	current_task = null
+	merge_conflict = null
 
 func _set_state(new_state: State) -> void:
 	state = new_state

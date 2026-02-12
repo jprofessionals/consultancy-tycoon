@@ -274,7 +274,6 @@ func serialize_coding_loop(loop: CodingLoop) -> Dictionary:
 		"state": loop.state,
 		"progress": loop.progress,
 		"review_changes_needed": loop.review_changes_needed,
-		"conflict_correct_side": loop.conflict_correct_side,
 		"current_task": _serialize_task(loop.current_task),
 	}
 
@@ -286,7 +285,7 @@ func deserialize_coding_loop(loop: CodingLoop, d: Dictionary) -> void:
 	loop.current_task = task
 	loop.progress = float(d.get("progress", 0.0))
 	loop.review_changes_needed = int(d.get("review_changes_needed", 0))
-	loop.conflict_correct_side = str(d.get("conflict_correct_side", ""))
+	# Note: merge_conflict is not serialized yet (Task 5)
 	# Restore state directly (bypass _set_state to avoid emitting during load)
 	loop.state = int(d.get("state", CodingLoop.State.IDLE))
 
