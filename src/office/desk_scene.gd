@@ -81,12 +81,12 @@ func _build_ui():
 	# Monitor stand
 	var stand_base = ColorRect.new()
 	stand_base.color = Color(0.20, 0.20, 0.22)
-	stand_base.position = Vector2(vp.x * (526.0 / REF_W), vp.y * (370.0 / REF_H))
+	stand_base.position = Vector2(mon_x + mon_w * 0.315, desk_y + 20)
 	stand_base.size = Vector2(100, 12)
 	add_child(stand_base)
 	var stand_neck = ColorRect.new()
 	stand_neck.color = Color(0.22, 0.22, 0.24)
-	stand_neck.position = Vector2(vp.x * (561.0 / REF_W), vp.y * (340.0 / REF_H))
+	stand_neck.position = Vector2(mon_x + mon_w * 0.465, desk_y - 10)
 	stand_neck.size = Vector2(30, 35)
 	add_child(stand_neck)
 
