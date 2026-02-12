@@ -219,9 +219,9 @@ func _build_office():
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			add_child(tile)
 
-	# Back wall along row 0
+	# Back wall along row 0 (skip col 0 — doorway goes there)
 	var wall_tex = load("res://assets/kenney-furniture/isometric/wall_SE.png")
-	for col in GRID_COLS:
+	for col in range(1, GRID_COLS):
 		var iso_pos = _cart_to_iso(col, 0, origin)
 		var wall_sprite = TextureRect.new()
 		wall_sprite.texture = wall_tex
@@ -229,6 +229,21 @@ func _build_office():
 		wall_sprite.position = iso_pos + Vector2(50, -110)
 		wall_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(wall_sprite)
+
+	# === DECORATIONS ===
+	var bookcase_tex = load("res://assets/kenney-furniture/isometric/bookcaseOpen_SE.png")
+	var bookcase = TextureRect.new()
+	bookcase.texture = bookcase_tex
+	bookcase.position = _cart_to_iso(GRID_COLS - 1, 0, origin) + Vector2(60, -100)
+	bookcase.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bookcase)
+
+	var plant_tex = load("res://assets/kenney-furniture/isometric/pottedPlant_SE.png")
+	var plant = TextureRect.new()
+	plant.texture = plant_tex
+	plant.position = _cart_to_iso(GRID_COLS - 2, 0, origin) + Vector2(80, -60)
+	plant.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(plant)
 
 	# === WALL OBJECTS ===
 	_build_wall_objects()
@@ -394,7 +409,7 @@ func _build_desks():
 		add_child(num_label)
 		_desk_node_visuals.append(num_label)
 
-		_desk_nodes.append({"position": iso_pos, "index": i})
+		_desk_nodes.append({"position": iso_pos, "index": i, "chair": chair, "monitor": monitor})
 
 	# Buy Desk button (after last desk position)
 	if _buy_desk_btn and is_instance_valid(_buy_desk_btn):
@@ -451,6 +466,7 @@ func refresh():
 
 	var in_office = GameState.get_consultants_by_location(ConsultantData.Location.IN_OFFICE)
 	var away_consultants = _get_away_consultants()
+	var occupied_count = in_office.size() + away_consultants.size()
 
 	# Place in-office consultants at desks
 	for i in in_office.size():
@@ -470,6 +486,15 @@ func refresh():
 		var desk_pos: Vector2 = desk_data["position"]
 		_create_away_label(ac, desk_pos)
 		away_index += 1
+
+	# Show chair/monitor only on occupied desks, hide on empty ones
+	for i in _desk_nodes.size():
+		var desk_data = _desk_nodes[i]
+		var is_occupied = i < occupied_count
+		if is_instance_valid(desk_data["chair"]):
+			desk_data["chair"].visible = is_occupied
+		if is_instance_valid(desk_data["monitor"]):
+			desk_data["monitor"].visible = is_occupied
 
 
 func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _desk_index: int):
