@@ -25,6 +25,10 @@ var _idle_loop: CodingLoop = CodingLoop.new()
 @onready var keyboard_panel: PanelContainer
 var _tab_bar: HBoxContainer
 var _tab_bar_container: PanelContainer
+var _merge_view: HBoxContainer
+var _merge_local_display: RichTextLabel
+var _merge_result_display: RichTextLabel
+var _merge_remote_display: RichTextLabel
 
 var _key_buttons: Array[Button] = []
 var _key_buttons_by_label: Dictionary = {}
@@ -192,16 +196,27 @@ func _unhandled_input(event: InputEvent):
 			get_viewport().set_input_as_handled()
 		return
 
-	# Arrow keys → merge conflict resolution
-	if loop.state == CodingLoop.State.CONFLICT:
-		if keycode == KEY_LEFT:
-			loop.resolve_conflict("left")
-			get_viewport().set_input_as_handled()
-			return
-		elif keycode == KEY_RIGHT:
-			loop.resolve_conflict("right")
-			get_viewport().set_input_as_handled()
-			return
+	# Merge conflict shortcuts
+	if loop.state == CodingLoop.State.CONFLICT and loop.merge_conflict != null:
+		if event.ctrl_pressed:
+			if keycode == KEY_A and not loop.merge_conflict.auto_merged:
+				loop.auto_merge()
+				_on_merge_auto_merged()
+				get_viewport().set_input_as_handled()
+				return
+			elif keycode == KEY_L and loop.merge_conflict.auto_merged:
+				_resolve_current_chunk("local")
+				get_viewport().set_input_as_handled()
+				return
+			elif keycode == KEY_R and loop.merge_conflict.auto_merged:
+				_resolve_current_chunk("remote")
+				get_viewport().set_input_as_handled()
+				return
+			elif keycode == KEY_B and loop.merge_conflict.auto_merged:
+				_resolve_current_chunk("both")
+				get_viewport().set_input_as_handled()
+				return
+		return  # Don't process other keys during conflict
 
 	# Regular typing keys → write/fix code
 	var label = _keycode_to_label(keycode)
@@ -339,6 +354,25 @@ func _build_ui():
 	code_display.add_theme_color_override("default_color", Color(0.85, 0.85, 0.85))
 	vbox.add_child(code_display)
 
+	# Merge view (replaces code_display during conflicts)
+	_merge_view = HBoxContainer.new()
+	_merge_view.visible = false
+	_merge_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_merge_view.add_theme_constant_override("separation", 4)
+	vbox.add_child(_merge_view)
+
+	var local_panel = _build_merge_column("LOCAL")
+	_merge_view.add_child(local_panel)
+	_merge_local_display = local_panel.get_node("Content")
+
+	var result_panel = _build_merge_column("RESULT")
+	_merge_view.add_child(result_panel)
+	_merge_result_display = result_panel.get_node("Content")
+
+	var remote_panel = _build_merge_column("REMOTE")
+	_merge_view.add_child(remote_panel)
+	_merge_remote_display = remote_panel.get_node("Content")
+
 	# Progress bar
 	progress_bar = ProgressBar.new()
 	progress_bar.min_value = 0.0
@@ -401,6 +435,30 @@ func _build_keyboard(parent: VBoxContainer):
 	space_btn.custom_minimum_size = Vector2(200, 36)
 	bottom_row.add_child(space_btn)
 	_key_buttons.append(space_btn)
+
+func _build_merge_column(title_text: String) -> PanelContainer:
+	var panel = PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.1, 0.12)
+	style.set_content_margin_all(6)
+	style.set_corner_radius_all(3)
+	panel.add_theme_stylebox_override("panel", style)
+	var col_vbox = VBoxContainer.new()
+	panel.add_child(col_vbox)
+	var label = Label.new()
+	label.text = title_text
+	label.add_theme_font_size_override("font_size", 11)
+	label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
+	col_vbox.add_child(label)
+	var content = RichTextLabel.new()
+	content.name = "Content"
+	content.bbcode_enabled = true
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_theme_color_override("default_color", Color(0.8, 0.8, 0.8))
+	content.add_theme_font_size_override("normal_font_size", 12)
+	col_vbox.add_child(content)
+	return panel
 
 func _create_key_button(key_label: String) -> Button:
 	var btn = Button.new()
@@ -602,7 +660,7 @@ func _rebuild_tab_bar():
 func _connect_tab_signals(tab: CodingTab):
 	tab.coding_loop.state_changed.connect(_on_tab_state_changed.bind(tab))
 	tab.coding_loop.progress_changed.connect(_on_tab_progress_changed.bind(tab))
-	tab.coding_loop.conflict_appeared.connect(_on_tab_conflict_appeared.bind(tab))
+	tab.coding_loop.merge_conflict_started.connect(_on_tab_merge_conflict_started.bind(tab))
 	tab.coding_loop.task_done.connect(_on_tab_task_done.bind(tab))
 
 func _disconnect_tab_signals(tab: CodingTab):
@@ -610,8 +668,8 @@ func _disconnect_tab_signals(tab: CodingTab):
 		tab.coding_loop.state_changed.disconnect(_on_tab_state_changed)
 	if tab.coding_loop.progress_changed.is_connected(_on_tab_progress_changed):
 		tab.coding_loop.progress_changed.disconnect(_on_tab_progress_changed)
-	if tab.coding_loop.conflict_appeared.is_connected(_on_tab_conflict_appeared):
-		tab.coding_loop.conflict_appeared.disconnect(_on_tab_conflict_appeared)
+	if tab.coding_loop.merge_conflict_started.is_connected(_on_tab_merge_conflict_started):
+		tab.coding_loop.merge_conflict_started.disconnect(_on_tab_merge_conflict_started)
 	if tab.coding_loop.task_done.is_connected(_on_tab_task_done):
 		tab.coding_loop.task_done.disconnect(_on_tab_task_done)
 
@@ -629,9 +687,9 @@ func _on_tab_progress_changed(new_progress: float, tab: CodingTab):
 		progress_bar.value = new_progress
 		_sync_code_to_progress(new_progress, tab)
 
-func _on_tab_conflict_appeared(left_code: String, right_code: String, tab: CodingTab):
+func _on_tab_merge_conflict_started(conflict: MergeConflict, tab: CodingTab):
 	if _is_focused_tab(tab):
-		_show_conflict_ui(left_code, right_code, tab)
+		_show_conflict_ui(null, null, tab)
 
 func _on_tab_task_done(task: CodingTask, tab: CodingTab):
 	GameState.add_money(task.payout)
@@ -727,23 +785,16 @@ func _show_review_comment(text: String):
 	review_panel.visible = true
 	notification_area.visible = true
 
-func _show_conflict_ui(left_code: String, right_code: String, tab: CodingTab):
-	conflict_panel.visible = true
+func _show_conflict_ui(_left_unused, _right_unused, tab: CodingTab):
+	conflict_panel.visible = false
+	var conflict = tab.coding_loop.merge_conflict
+	if conflict == null:
+		return
+	_merge_view.visible = true
+	code_display.visible = false
 	notification_area.visible = true
-	for child in conflict_panel.get_children():
-		child.queue_free()
-
-	var left_btn = Button.new()
-	left_btn.text = "Accept Local\n" + left_code
-	left_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_btn.pressed.connect(func(): tab.coding_loop.resolve_conflict("left"))
-	conflict_panel.add_child(left_btn)
-
-	var right_btn = Button.new()
-	right_btn.text = "Accept Remote\n" + right_code
-	right_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_btn.pressed.connect(func(): tab.coding_loop.resolve_conflict("right"))
-	conflict_panel.add_child(right_btn)
+	_populate_merge_panels(conflict)
+	_update_merge_status(conflict)
 
 func _on_ai_tool_acted(tool_id: String, action: String, success: bool):
 	# Only show visual feedback for the focused tab
@@ -766,7 +817,103 @@ func _on_ai_tool_acted(tool_id: String, action: String, success: bool):
 			if success:
 				_show_review_comment("[color=#4ec9b0]Merge Resolver:[/color] Resolved correctly!")
 			else:
-				_show_review_comment("[color=#f44747]Merge Resolver:[/color] Picked wrong side...")
+				_show_review_comment("[color=#f44747]Merge Resolver:[/color] Picked wrong resolution...")
+			if _merge_view and _merge_view.visible and _focused_index >= 0:
+				var conflict = coding_loop.merge_conflict
+				if conflict and coding_loop.state == CodingLoop.State.CONFLICT:
+					_populate_merge_panels(conflict)
+					_update_merge_status(conflict)
+				elif coding_loop.state != CodingLoop.State.CONFLICT:
+					_hide_merge_view()
+
+func _populate_merge_panels(conflict: MergeConflict):
+	_merge_local_display.text = ""
+	_merge_remote_display.text = ""
+	_merge_result_display.text = ""
+	var current_chunk = conflict.get_next_unresolved_index()
+	for entry in conflict.get_local_display_lines():
+		if entry["type"] == "conflict":
+			var ci = entry["chunk_index"]
+			var color = _get_chunk_color(ci, current_chunk, conflict)
+			_merge_local_display.append_text("[color=%s]%s[/color]\n" % [color, entry["text"]])
+		else:
+			_merge_local_display.append_text(_syntax_highlight(entry["text"]) + "\n")
+	for entry in conflict.get_remote_display_lines():
+		if entry["type"] == "conflict":
+			var ci = entry["chunk_index"]
+			var color = _get_chunk_color(ci, current_chunk, conflict)
+			_merge_remote_display.append_text("[color=%s]%s[/color]\n" % [color, entry["text"]])
+		else:
+			_merge_remote_display.append_text(_syntax_highlight(entry["text"]) + "\n")
+	if conflict.auto_merged:
+		_update_result_panel(conflict)
+
+func _get_chunk_color(chunk_index: int, current_chunk_index: int, conflict: MergeConflict) -> String:
+	if chunk_index < conflict.resolutions.size() and conflict.resolutions[chunk_index] != "":
+		return "#4ec9b0"  # resolved — green
+	elif chunk_index == current_chunk_index:
+		return "#f4a460"  # current — orange/highlight
+	else:
+		return "#f44747"  # unresolved — red
+
+func _update_result_panel(conflict: MergeConflict):
+	_merge_result_display.text = ""
+	var merged = conflict.get_merged_lines()
+	for line in merged:
+		_merge_result_display.append_text(_syntax_highlight(line) + "\n")
+	var next = conflict.get_next_unresolved_index()
+	if next >= 0:
+		_merge_result_display.append_text("\n[color=#666666]<<< unresolved conflict >>>[/color]\n")
+
+func _update_merge_status(conflict: MergeConflict):
+	if not conflict.auto_merged:
+		_show_merge_notification("MERGE CONFLICT — Press [b]Ctrl+A[/b] to auto-merge")
+	else:
+		var remaining = 0
+		for i in range(conflict.chunks.size()):
+			if i >= conflict.resolutions.size() or conflict.resolutions[i] == "":
+				remaining += 1
+		if remaining > 0:
+			_show_merge_notification("%d conflict%s remaining — [b]Ctrl+L[/b] local  [b]Ctrl+R[/b] remote  [b]Ctrl+B[/b] both" % [remaining, "s" if remaining > 1 else ""])
+		else:
+			_show_merge_notification("[color=#4ec9b0]All conflicts resolved![/color]")
+
+func _show_merge_notification(text: String):
+	for child in review_panel.get_children():
+		child.queue_free()
+	var label = RichTextLabel.new()
+	label.bbcode_enabled = true
+	label.text = text
+	label.fit_content = true
+	label.custom_minimum_size = Vector2(0, 32)
+	review_panel.add_child(label)
+	review_panel.visible = true
+	notification_area.visible = true
+
+func _on_merge_auto_merged():
+	if _focused_index < 0 or _focused_index >= tabs.size():
+		return
+	var conflict = tabs[_focused_index].coding_loop.merge_conflict
+	if conflict:
+		_populate_merge_panels(conflict)
+		_update_merge_status(conflict)
+
+func _resolve_current_chunk(resolution: String):
+	if _focused_index < 0 or _focused_index >= tabs.size():
+		return
+	var loop = coding_loop
+	loop.resolve_merge_chunk(resolution)
+	var conflict = loop.merge_conflict
+	if conflict and loop.state == CodingLoop.State.CONFLICT:
+		_populate_merge_panels(conflict)
+		_update_merge_status(conflict)
+	elif loop.state != CodingLoop.State.CONFLICT:
+		_hide_merge_view()
+
+func _hide_merge_view():
+	if _merge_view:
+		_merge_view.visible = false
+	code_display.visible = true
 
 func _flash_ai_key():
 	if _key_buttons.is_empty():
@@ -791,6 +938,7 @@ func _flash_ai_key_fail():
 	timer.timeout.connect(func(): random_btn.remove_theme_stylebox_override("normal"))
 
 func _update_ui():
+	_hide_merge_view()
 	conflict_panel.visible = false
 	review_panel.visible = false
 	notification_area.visible = false
@@ -824,10 +972,13 @@ func _update_ui():
 		CodingLoop.State.FIXING:
 			status_label.text = "FIXING — %d changes remaining — Type to fix" % loop.review_changes_needed
 		CodingLoop.State.CONFLICT:
-			status_label.text = "MERGE CONFLICT — Left/Right arrow to pick a side"
+			if loop.merge_conflict:
+				if not loop.merge_conflict.auto_merged:
+					status_label.text = "MERGE CONFLICT — Ctrl+A to auto-merge"
+				else:
+					status_label.text = "MERGE CONFLICT — Ctrl+L/R/B to resolve"
 			_set_keyboard_enabled(false)
 			notification_area.visible = true
-			conflict_panel.visible = true
 		CodingLoop.State.COMPLETE:
 			_set_keyboard_enabled(false)
 
