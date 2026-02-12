@@ -25,10 +25,14 @@ var _idle_loop: CodingLoop = CodingLoop.new()
 @onready var keyboard_panel: PanelContainer
 var _tab_bar: HBoxContainer
 var _tab_bar_container: PanelContainer
-var _merge_view: HBoxContainer
+var _merge_view: VBoxContainer
 var _merge_local_display: RichTextLabel
 var _merge_result_display: RichTextLabel
 var _merge_remote_display: RichTextLabel
+var _merge_btn_automerge: Button
+var _merge_btn_local: Button
+var _merge_btn_remote: Button
+var _merge_btn_both: Button
 
 var _key_buttons: Array[Button] = []
 var _key_buttons_by_label: Dictionary = {}
@@ -355,23 +359,58 @@ func _build_ui():
 	vbox.add_child(code_display)
 
 	# Merge view (replaces code_display during conflicts)
-	_merge_view = HBoxContainer.new()
+	_merge_view = VBoxContainer.new()
 	_merge_view.visible = false
 	_merge_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_merge_view.add_theme_constant_override("separation", 4)
 	vbox.add_child(_merge_view)
 
+	var merge_columns = HBoxContainer.new()
+	merge_columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	merge_columns.add_theme_constant_override("separation", 4)
+	_merge_view.add_child(merge_columns)
+
 	var local_col = _build_merge_column("LOCAL")
-	_merge_view.add_child(local_col[0])
+	merge_columns.add_child(local_col[0])
 	_merge_local_display = local_col[1]
 
 	var result_col = _build_merge_column("RESULT")
-	_merge_view.add_child(result_col[0])
+	merge_columns.add_child(result_col[0])
 	_merge_result_display = result_col[1]
 
 	var remote_col = _build_merge_column("REMOTE")
-	_merge_view.add_child(remote_col[0])
+	merge_columns.add_child(remote_col[0])
 	_merge_remote_display = remote_col[1]
+
+	# Merge action buttons
+	var merge_btn_bar = HBoxContainer.new()
+	merge_btn_bar.add_theme_constant_override("separation", 8)
+	merge_btn_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	_merge_view.add_child(merge_btn_bar)
+
+	_merge_btn_automerge = Button.new()
+	_merge_btn_automerge.text = "Auto-Merge (Ctrl+A)"
+	_merge_btn_automerge.custom_minimum_size = Vector2(160, 36)
+	_merge_btn_automerge.pressed.connect(_on_merge_btn_automerge)
+	merge_btn_bar.add_child(_merge_btn_automerge)
+
+	_merge_btn_local = Button.new()
+	_merge_btn_local.text = "Accept Local (Ctrl+L)"
+	_merge_btn_local.custom_minimum_size = Vector2(160, 36)
+	_merge_btn_local.pressed.connect(_resolve_current_chunk.bind("local"))
+	merge_btn_bar.add_child(_merge_btn_local)
+
+	_merge_btn_remote = Button.new()
+	_merge_btn_remote.text = "Accept Remote (Ctrl+R)"
+	_merge_btn_remote.custom_minimum_size = Vector2(170, 36)
+	_merge_btn_remote.pressed.connect(_resolve_current_chunk.bind("remote"))
+	merge_btn_bar.add_child(_merge_btn_remote)
+
+	_merge_btn_both = Button.new()
+	_merge_btn_both.text = "Accept Both (Ctrl+B)"
+	_merge_btn_both.custom_minimum_size = Vector2(160, 36)
+	_merge_btn_both.pressed.connect(_resolve_current_chunk.bind("both"))
+	merge_btn_bar.add_child(_merge_btn_both)
 
 	# Progress bar
 	progress_bar = ProgressBar.new()
@@ -794,6 +833,7 @@ func _show_conflict_ui(_left_unused, _right_unused, tab: CodingTab):
 	notification_area.visible = true
 	_populate_merge_panels(conflict)
 	_update_merge_status(conflict)
+	_update_merge_buttons(conflict)
 
 func _on_ai_tool_acted(tool_id: String, action: String, success: bool):
 	# Only show visual feedback for the focused tab
@@ -822,6 +862,7 @@ func _on_ai_tool_acted(tool_id: String, action: String, success: bool):
 				if conflict and coding_loop.state == CodingLoop.State.CONFLICT:
 					_populate_merge_panels(conflict)
 					_update_merge_status(conflict)
+					_update_merge_buttons(conflict)
 				elif coding_loop.state != CodingLoop.State.CONFLICT:
 					_hide_merge_view()
 
@@ -889,6 +930,14 @@ func _show_merge_notification(text: String):
 	review_panel.visible = true
 	notification_area.visible = true
 
+func _on_merge_btn_automerge():
+	if _focused_index < 0 or _focused_index >= tabs.size():
+		return
+	var loop = coding_loop
+	if loop.state == CodingLoop.State.CONFLICT and loop.merge_conflict != null and not loop.merge_conflict.auto_merged:
+		loop.auto_merge()
+		_on_merge_auto_merged()
+
 func _on_merge_auto_merged():
 	if _focused_index < 0 or _focused_index >= tabs.size():
 		return
@@ -896,6 +945,7 @@ func _on_merge_auto_merged():
 	if conflict:
 		_populate_merge_panels(conflict)
 		_update_merge_status(conflict)
+		_update_merge_buttons(conflict)
 
 func _resolve_current_chunk(resolution: String):
 	if _focused_index < 0 or _focused_index >= tabs.size():
@@ -906,8 +956,16 @@ func _resolve_current_chunk(resolution: String):
 	if conflict and loop.state == CodingLoop.State.CONFLICT:
 		_populate_merge_panels(conflict)
 		_update_merge_status(conflict)
+		_update_merge_buttons(conflict)
 	elif loop.state != CodingLoop.State.CONFLICT:
 		_hide_merge_view()
+
+func _update_merge_buttons(conflict: MergeConflict):
+	var auto_merged = conflict.auto_merged
+	_merge_btn_automerge.disabled = auto_merged
+	_merge_btn_local.disabled = not auto_merged or conflict.all_resolved()
+	_merge_btn_remote.disabled = not auto_merged or conflict.all_resolved()
+	_merge_btn_both.disabled = not auto_merged or conflict.all_resolved()
 
 func _hide_merge_view():
 	if _merge_view:

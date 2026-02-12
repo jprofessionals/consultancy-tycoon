@@ -3,5 +3,8 @@
 /android/
 *.uid
 
+# Build output
+build/
+
 # IDE
 .idea/
