@@ -13,7 +13,11 @@ const LAST_NAMES = [
 
 const OFFICE_UNLOCK_COST: float = 10000.0
 const BASE_ASSIGNMENT_SPEED: float = 0.15  # progress per second per consultant
-const ISSUE_CHANCE_PER_TICK: float = 0.002  # ~every 8 min at 1 tick/sec
+const ISSUE_CHANCE_PER_TICK: float = 0.0005  # ~every 30 min at 1 tick/sec
+const PASSIVE_SKILL_RATE: float = 0.001  # XP per second per existing skill (very slow)
+const ACTIVE_TRAINING_RATE: float = 0.01  # XP per second for active training (10x passive)
+const REMOTE_PENALTY: float = 0.7  # 70% effectiveness for remote consultants
+const TRAINING_COST_PER_SEC: float = 0.1  # $ per second of active training
 
 var _issue_templates: Array[Dictionary] = []
 
@@ -134,42 +138,69 @@ func pay_salaries(state: Node) -> float:
 		state.spend_money(total)
 	return total
 
+func tick_training(delta: float, state: Node) -> void:
+	for c in state.consultants:
+		if not c.is_trainable():
+			continue
+		var location_mult = REMOTE_PENALTY if c.location == ConsultantData.Location.REMOTE else 1.0
+		if c.training_skill != "":
+			var xp = ACTIVE_TRAINING_RATE * delta * location_mult
+			_add_skill_xp(c, c.training_skill, xp)
+			state.spend_money(TRAINING_COST_PER_SEC * delta)
+		else:
+			for skill_id in c.skills:
+				var xp = PASSIVE_SKILL_RATE * delta * location_mult
+				_add_skill_xp(c, skill_id, xp)
+
+func _add_skill_xp(c: ConsultantData, skill_id: String, xp: float) -> void:
+	var current = float(c.skills.get(skill_id, 0))
+	c.skills[skill_id] = current + xp
+
+func start_training(c: ConsultantData, skill_id: String) -> bool:
+	if not c.is_trainable():
+		return false
+	c.training_skill = skill_id
+	return true
+
+func stop_training(c: ConsultantData) -> void:
+	c.training_skill = ""
+
 func _build_issue_templates():
 	_issue_templates = [
 		{
 			"id": "burnout",
 			"title": "{name} is Burning Out",
-			"description": "{name} has been working long hours and morale is dropping. What do you do?",
+			"description": "{name} has been working long hours. A little attention now could go a long way.",
 			"choices": [
 				{"label": "Give a bonus (-$200)", "effects": [{"type": "spend_money", "amount": 200.0}, {"type": "morale_change", "amount": 0.3}]},
-				{"label": "Push through", "effects": [{"type": "morale_change", "amount": -0.2}]},
+				{"label": "Encouraging words", "effects": [{"type": "morale_change", "amount": 0.1}]},
 			]
 		},
 		{
 			"id": "raise_demand",
 			"title": "{name} Wants a Raise",
-			"description": "{name} thinks they deserve a raise after landing a big contract. They might leave if you refuse.",
+			"description": "{name} thinks they deserve a raise after landing a big contract. Responding positively could boost morale.",
 			"choices": [
-				{"label": "Grant raise (-$300)", "effects": [{"type": "spend_money", "amount": 300.0}, {"type": "morale_change", "amount": 0.2}]},
-				{"label": "Refuse", "effects": [{"type": "morale_change", "amount": -0.3}]},
+				{"label": "Grant raise (-$300)", "effects": [{"type": "spend_money", "amount": 300.0}, {"type": "morale_change", "amount": 0.25}]},
+				{"label": "Promise future review", "effects": [{"type": "morale_change", "amount": 0.1}]},
 			]
 		},
 		{
 			"id": "conflict_colleagues",
 			"title": "Team Conflict",
-			"description": "{name} is having conflicts with another team member. Productivity is suffering.",
+			"description": "{name} is having conflicts with another team member. Stepping in could help.",
 			"choices": [
-				{"label": "Mediate (costs time)", "effects": [{"type": "morale_change", "amount": 0.15}]},
-				{"label": "Ignore it", "effects": [{"type": "morale_change", "amount": -0.15}]},
+				{"label": "Mediate (-$100)", "effects": [{"type": "spend_money", "amount": 100.0}, {"type": "morale_change", "amount": 0.2}]},
+				{"label": "Quick chat", "effects": [{"type": "morale_change", "amount": 0.1}]},
 			]
 		},
 		{
-			"id": "poached",
-			"title": "{name} Got Poached!",
-			"description": "A competitor offered {name} a better deal. They're leaving unless you counter-offer.",
+			"id": "good_work",
+			"title": "{name} Delivered Great Work",
+			"description": "{name} went above and beyond on the last project. A reward could keep the momentum going.",
 			"choices": [
-				{"label": "Counter-offer (-$500)", "effects": [{"type": "spend_money", "amount": 500.0}, {"type": "morale_change", "amount": 0.25}]},
-				{"label": "Let them go", "effects": [{"type": "fire", "amount": 0}]},
+				{"label": "Bonus (-$250)", "effects": [{"type": "spend_money", "amount": 250.0}, {"type": "morale_change", "amount": 0.3}]},
+				{"label": "Public recognition", "effects": [{"type": "morale_change", "amount": 0.15}]},
 			]
 		},
 	]
