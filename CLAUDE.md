@@ -32,19 +32,31 @@ godot --path /home/lars/Prosjekter/consultancy-tycoon --editor
 - **CodingTask** (`src/data/coding_task.gd`) — A single coding task with difficulty, payout, click requirements, review/conflict chance calculations.
 - **ClientContract** (`src/data/client_contract.gd`) — A client contract with tier, task count, payout, skill requirements.
 - **SkillData** (`src/data/skill_data.gd`) — A purchasable skill with exponential cost scaling.
+- **ConsultantData** (`src/data/consultant_data.gd`) — Consultant with skills, salary, trait, morale, location (IN_OFFICE/REMOTE/ON_PROJECT/ON_RENTAL), training state.
+- **ConsultantRental** (`src/data/consultant_rental.gd`) — A rental placement with duration, rate, extension window tracking.
+- **ConsultantAssignment** (`src/data/consultant_assignment.gd`) — A team project assignment with progress tracking.
 
 ### Logic (pure classes, no Node dependency)
 - **CodingLoop** (`src/logic/coding_loop.gd`) — State machine: IDLE → WRITING → REVIEWING → (FIXING/CONFLICT) → COMPLETE. Core gameplay engine.
-- **BiddingSystem** (`src/logic/bidding_system.gd`) — Generates contracts, calculates bid success chance and difficulty modifiers.
+- **BiddingSystem** (`src/logic/bidding_system.gd`) — Generates contracts (personal tier 1-2, management tier 2+), calculates bid success chance and difficulty modifiers.
 - **SkillManager** (`src/logic/skill_manager.gd`) — Manages 7 skills, handles purchases, calculates stat bonuses (click power, review bonus, bid bonus).
 - **TaskFactory** (`src/data/task_factory.gd`) — Generates random CodingTask instances scaled by tier.
+- **ConsultantManager** (`src/logic/consultant_manager.gd`) — Hiring, training (passive/active), rentals, assignments, salary, management issues.
 
-### UI Scenes
-- **Main** (`src/main.tscn`) — Root scene. View switching (IDE/Contracts/Skills), contract flow orchestration, HUD.
+### Personal Office (side-view)
+- **Main** (`src/main.tscn`) — Root scene. Scene switching between personal office and management office, HUD, timers.
+- **DeskScene** (`src/office/desk_scene.tscn`) — Side-view desk with clickable objects (monitor, phone, books, email, laptop, door).
 - **IDEInterface** (`src/ide/ide_interface.tscn`) — Fake IDE with code display, progress bar, review comments, merge conflict picker.
-- **BiddingPanel** (`src/ui/bidding_panel.tscn`) — Shows contract offers with bid chance and bid buttons. Emits `contract_accepted` signal.
+- **BiddingPanel** (`src/ui/bidding_panel.tscn`) — Shows personal contract offers (tier 1-2) with bid chance and bid buttons.
 - **SkillPanel** (`src/ui/skill_panel.tscn`) — Skill purchase UI with dynamic pricing.
 - **HUD** (`src/ui/hud.tscn`) — Money, reputation, task info display. Listens to EventBus signals.
+
+### Management Office (top-down, unlocked via door)
+- **ManagementOffice** (`src/management/management_office.tscn`) — Top-down office floor with desk grid, consultant sprites, chat bubbles, interactive wall objects.
+- **ContractBoard** (`src/management/contract_board.tscn`) — Projects (tier 2+) and rental offers. Assign consultants.
+- **HiringBoard** (`src/management/hiring_board.tscn`) — Job market, candidate cards, hire buttons. Staff capped at 3x desk capacity.
+- **StaffRoster** (`src/management/staff_roster.tscn`) — All consultants with status, training controls, remote toggle, fire button.
+- **ManagementInbox** (`src/management/management_inbox.tscn`) — Rental extension notifications and management issues.
 
 ### Key Patterns
 - **Logic/UI separation** — Logic classes extend RefCounted, take state as parameters, are fully testable. UI scenes reference autoloads directly.
@@ -63,9 +75,10 @@ godot --headless -s addons/gut/gut_cmdln.gd
 # Config in .gutconfig.json
 ```
 
-Current test coverage: 36 tests across game state, coding task, coding loop, bidding system, and skill system.
+Current test coverage: 155 tests across game state, coding task, coding loop, bidding system, skill system, consultant state, rentals, training, contract tiers, and save/load.
 
 ## Game Design
 
 Full design document: `docs/plans/2026-02-11-game-design.md`
 Phase 1 implementation plan: `docs/plans/2026-02-11-phase1-mvp.md`
+Management rework design: `docs/plans/2026-02-12-management-rework-design.md`
