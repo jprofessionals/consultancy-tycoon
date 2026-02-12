@@ -18,6 +18,10 @@ const PASSIVE_SKILL_RATE: float = 0.001  # XP per second per existing skill (ver
 const ACTIVE_TRAINING_RATE: float = 0.01  # XP per second for active training (10x passive)
 const REMOTE_PENALTY: float = 0.7  # 70% effectiveness for remote consultants
 const TRAINING_COST_PER_SEC: float = 0.1  # $ per second of active training
+const RENTAL_CLIENT_NAMES = [
+	"Acme Corp", "TechVentures", "GlobalSoft", "DataDriven", "CloudFirst",
+	"NexGen", "PrimeSoft", "CoreStack", "BluePeak", "AlphaWorks",
+]
 
 var _issue_templates: Array[Dictionary] = []
 
@@ -164,6 +168,64 @@ func start_training(c: ConsultantData, skill_id: String) -> bool:
 
 func stop_training(c: ConsultantData) -> void:
 	c.training_skill = ""
+
+func place_on_rental(c: ConsultantData, client_name: String, rate: float, duration: float, state: Node) -> ConsultantRental:
+	if not c.is_available():
+		return null
+	var rental = ConsultantRental.new()
+	rental.consultant = c
+	rental.client_name = client_name
+	rental.rate_per_tick = rate
+	rental.total_duration = duration
+	rental.duration_remaining = duration
+	c.location = ConsultantData.Location.ON_RENTAL
+	c.training_skill = ""
+	state.add_rental(rental)
+	return rental
+
+func tick_rentals(delta: float, state: Node) -> Array:
+	var completed: Array = []
+	for rental in state.active_rentals.duplicate():
+		rental.tick(delta)
+		state.add_money(rental.get_earnings_per_tick() * delta)
+		if rental.is_complete():
+			completed.append(rental)
+			rental.consultant.location = ConsultantData.Location.IN_OFFICE
+			state.remove_rental(rental)
+	return completed
+
+func check_rental_extensions(state: Node) -> Array:
+	var extensions: Array = []
+	for rental in state.active_rentals:
+		if rental.is_extension_window():
+			rental.extension_offered = true
+			extensions.append(rental)
+	return extensions
+
+func extend_rental(rental: ConsultantRental, extra_duration: float) -> void:
+	rental.duration_remaining += extra_duration
+	rental.total_duration += extra_duration
+	rental.extension_offered = false
+
+func generate_rental_offers(count: int, reputation: float) -> Array:
+	var offers: Array = []
+	var skill_pool = ["javascript", "python", "rust", "go", "devops", "frameworks"]
+	for i in range(count):
+		var base_rate = 1.0 + reputation * 0.05 + randf_range(0.0, 2.0)
+		var duration = randf_range(300.0, 900.0)
+		var num_skills = randi_range(1, 2)
+		var required: Dictionary = {}
+		var shuffled = skill_pool.duplicate()
+		shuffled.shuffle()
+		for j in range(num_skills):
+			required[shuffled[j]] = randi_range(1, clampi(int(reputation / 20.0) + 1, 1, 4))
+		offers.append({
+			"client_name": RENTAL_CLIENT_NAMES[randi() % RENTAL_CLIENT_NAMES.size()],
+			"rate_per_tick": base_rate,
+			"duration": duration,
+			"required_skills": required,
+		})
+	return offers
 
 func _build_issue_templates():
 	_issue_templates = [
