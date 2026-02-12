@@ -90,6 +90,7 @@ func start_task(task: CodingTask):
 	current_snippet = FakeCode.get_random_snippet()
 	lines_revealed = 0
 	code_display.text = ""
+	progress_bar.value = 0.0
 	coding_loop.start_task(task)
 	task_label.text = "Task: " + task.title
 	_update_ui()
@@ -180,6 +181,7 @@ func _on_task_done(task: CodingTask):
 func _update_ui():
 	conflict_panel.visible = false
 	review_panel.visible = false
+	action_button.visible = true
 	match coding_loop.state:
 		CodingLoop.State.IDLE:
 			status_label.text = "IDLE — Waiting for task"
