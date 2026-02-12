@@ -10,13 +10,30 @@ var bidding_panel: PanelContainer
 var skill_panel: PanelContainer
 var email_panel: PanelContainer
 var ai_tool_panel: PanelContainer
-var hiring_panel: PanelContainer
 var task_factory: TaskFactory = TaskFactory.new()
 var skill_manager: SkillManager = SkillManager.new()
 var event_manager: EventManager = EventManager.new()
 
+# Management scene
+var management_office: Control
+var management_layer: CanvasLayer
+var management_overlay_layer: CanvasLayer
+var management_dimmer: ColorRect
+var _management_current_overlay: Control = null
+var _in_management: bool = false
+
+# Management UI panels
+var contract_board: PanelContainer
+var hiring_board: PanelContainer
+var staff_roster: PanelContainer
+var management_inbox: PanelContainer
+
+# Rental extension queue
+var _pending_extensions: Array = []
+
 # AI + Consultant systems
 var ai_tool_runner: AiToolRunner = AiToolRunner.new()
+var ai_tool_manager: AiToolManager = AiToolManager.new()
 var consultant_manager: ConsultantManager = ConsultantManager.new()
 
 # Layers
@@ -27,10 +44,7 @@ var welcome_layer: CanvasLayer
 var dimmer: ColorRect
 var stand_up_btn: Button
 
-# Active contract tracking
-var active_contract: ClientContract = null
-var tasks_remaining: int = 0
-var difficulty_modifier: float = 1.0
+# Timers
 var contract_offer_timer: Timer
 var event_timer: Timer
 var salary_timer: Timer
@@ -38,12 +52,12 @@ var salary_timer: Timer
 # Management issues queue (flows through email panel)
 var _pending_issues: Array = []
 
-# Team assignment picker state
-var _team_assign_contract: ClientContract = null
-var _team_assign_diff_mod: float = 1.0
-
 # Currently shown overlay panel
 var _current_overlay: Control = null
+
+# Pause/save menu
+var pause_layer: CanvasLayer = null
+var _pause_open: bool = false
 
 # Game started flag (suppress _process before start)
 var _game_started: bool = false
@@ -53,17 +67,19 @@ func _ready():
 	_build_hud_layer()
 	_build_ide_layer()
 	_build_overlay_layer()
+	_build_management_layer()
 	_build_welcome_layer()
 	_connect_signals()
 	_setup_timers()
 
 func _process(delta: float):
-	if not _game_started:
+	if not _game_started or _pause_open:
 		return
 
-	# AI tool runner auto-progresses the player's coding loop
-	if ide.coding_loop.state != CodingLoop.State.IDLE and ide.coding_loop.state != CodingLoop.State.COMPLETE:
-		ai_tool_runner.tick(delta, ide.coding_loop, GameState)
+	# AI tool runner ticks all active tabs
+	if not ide.tabs.is_empty():
+		ai_tool_runner.tick(delta, ide.tabs, ide.get_focused_index(), GameState)
+		hud.update_stuck_count(ide.get_stuck_count())
 
 	# Consultant assignment ticking
 	var completed = consultant_manager.tick_assignments(delta, GameState)
@@ -71,13 +87,29 @@ func _process(delta: float):
 		EventBus.assignment_completed.emit(assignment)
 		hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
 
-	# Management issue generation (roughly every 8 min)
+	# Training ticking
+	consultant_manager.tick_training(delta, GameState)
+
+	# Rental ticking
+	var completed_rentals = consultant_manager.tick_rentals(delta, GameState)
+	for rental in completed_rentals:
+		EventBus.rental_completed.emit(rental)
+
+	# Check for rental extension opportunities
+	var new_extensions = consultant_manager.check_rental_extensions(GameState)
+	for rental in new_extensions:
+		_pending_extensions.append(rental)
+		EventBus.rental_extension_available.emit(rental)
+
+	# Management issue generation
 	if not GameState.consultants.is_empty():
 		var issue = consultant_manager.try_generate_issue(GameState)
 		if issue:
 			_pending_issues.append(issue)
-			desk_scene.set_email_badge_count(event_manager.get_unread_count() + _pending_issues.size())
 			EventBus.management_issue.emit(issue)
+
+	# Auto-expire old management issues and random events
+	_expire_old_messages()
 
 # ── Scene Construction ──
 
@@ -166,9 +198,47 @@ func _build_overlay_layer():
 	ai_tool_panel.visible = false
 	center.add_child(ai_tool_panel)
 
-	hiring_panel = load("res://src/ui/hiring_panel.tscn").instantiate()
-	hiring_panel.visible = false
-	center.add_child(hiring_panel)
+func _build_management_layer():
+	management_layer = CanvasLayer.new()
+	management_layer.layer = 5
+	management_layer.visible = false
+	add_child(management_layer)
+
+	management_office = load("res://src/management/management_office.tscn").instantiate()
+	management_office.set_anchors_preset(Control.PRESET_FULL_RECT)
+	management_layer.add_child(management_office)
+
+	management_overlay_layer = CanvasLayer.new()
+	management_overlay_layer.layer = 25
+	management_overlay_layer.visible = false
+	add_child(management_overlay_layer)
+
+	management_dimmer = ColorRect.new()
+	management_dimmer.color = Color(0, 0, 0, 0.5)
+	management_dimmer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	management_dimmer.gui_input.connect(_on_management_dimmer_input)
+	management_overlay_layer.add_child(management_dimmer)
+
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	management_overlay_layer.add_child(center)
+
+	contract_board = load("res://src/management/contract_board.tscn").instantiate()
+	contract_board.visible = false
+	center.add_child(contract_board)
+
+	hiring_board = load("res://src/management/hiring_board.tscn").instantiate()
+	hiring_board.visible = false
+	center.add_child(hiring_board)
+
+	staff_roster = load("res://src/management/staff_roster.tscn").instantiate()
+	staff_roster.visible = false
+	center.add_child(staff_roster)
+
+	management_inbox = load("res://src/management/management_inbox.tscn").instantiate()
+	management_inbox.visible = false
+	center.add_child(management_inbox)
 
 func _build_welcome_layer():
 	welcome_layer = CanvasLayer.new()
@@ -217,12 +287,21 @@ func _build_welcome_layer():
 	spacer2.custom_minimum_size = Vector2(0, 10)
 	content.add_child(spacer2)
 
+	if SaveManager.has_save():
+		var continue_btn = Button.new()
+		continue_btn.text = "Continue"
+		continue_btn.custom_minimum_size = Vector2(200, 50)
+		continue_btn.add_theme_font_size_override("font_size", 18)
+		continue_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		continue_btn.pressed.connect(_on_start_game.bind(true))
+		content.add_child(continue_btn)
+
 	var start_btn = Button.new()
-	start_btn.text = "Start Game"
+	start_btn.text = "New Game"
 	start_btn.custom_minimum_size = Vector2(200, 50)
 	start_btn.add_theme_font_size_override("font_size", 18)
 	start_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	start_btn.pressed.connect(_on_start_game)
+	start_btn.pressed.connect(_on_start_game.bind(false))
 	content.add_child(start_btn)
 
 func _connect_signals():
@@ -232,10 +311,40 @@ func _connect_signals():
 	email_panel.close_requested.connect(_hide_overlay)
 	email_panel.choice_made.connect(_on_email_choice)
 	ai_tool_panel.close_requested.connect(_hide_overlay)
-	hiring_panel.close_requested.connect(_hide_overlay)
-	ide.coding_loop.task_done.connect(_on_task_completed)
+	EventBus.tab_task_done.connect(_on_tab_task_done)
 	EventBus.skill_purchased.connect(func(_id): _update_click_power())
 	EventBus.ai_tool_upgraded.connect(func(_tid, _tier): _update_ai_status())
+
+	# Management office signals
+	management_office.back_to_desk_requested.connect(_switch_to_personal)
+	management_office.contract_board_clicked.connect(func():
+		contract_board.refresh()
+		_show_management_overlay(contract_board)
+	)
+	management_office.hiring_board_clicked.connect(func():
+		hiring_board.refresh()
+		_show_management_overlay(hiring_board)
+	)
+	management_office.staff_roster_clicked.connect(func():
+		staff_roster.refresh()
+		_show_management_overlay(staff_roster)
+	)
+	management_office.inbox_clicked.connect(func():
+		management_inbox.set_notifications(_pending_extensions, _pending_issues)
+		_show_management_overlay(management_inbox)
+	)
+	contract_board.close_requested.connect(_hide_management_overlay)
+	hiring_board.close_requested.connect(_hide_management_overlay)
+	staff_roster.close_requested.connect(_hide_management_overlay)
+	management_inbox.close_requested.connect(_hide_management_overlay)
+	contract_board.consultant_assigned.connect(_on_management_assign)
+	contract_board.consultant_placed_on_rental.connect(_on_management_rental)
+	staff_roster.fire_consultant.connect(_on_fire_consultant)
+	staff_roster.train_consultant.connect(_on_train_consultant)
+	staff_roster.stop_training_consultant.connect(_on_stop_training)
+	staff_roster.set_remote.connect(_on_set_remote)
+	management_inbox.extension_accepted.connect(_on_rental_extension_accepted)
+	management_inbox.issue_choice_made.connect(_on_management_issue_choice)
 
 func _setup_timers():
 	contract_offer_timer = Timer.new()
@@ -261,15 +370,175 @@ func _setup_timers():
 
 # ── Game Start ──
 
-func _on_start_game():
+func _on_start_game(load_save: bool = false):
 	welcome_layer.queue_free()
 	welcome_layer = null
 	_game_started = true
+	if load_save:
+		var data = SaveManager.load_game()
+		var runtime = SaveManager.apply_save(data)
+		_apply_runtime_state(runtime)
 	bidding_panel.refresh_contracts()
 	desk_scene.set_phone_glowing(true)
 	contract_offer_timer.start()
 	event_timer.start()
 	salary_timer.start()
+	# Update HUD after load
+	hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
+	_update_ai_status()
+
+func _unhandled_input(event: InputEvent):
+	if not _game_started:
+		return
+	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+		if _pause_open:
+			_close_pause_menu()
+		elif _in_management:
+			if _management_current_overlay:
+				_hide_management_overlay()
+			else:
+				_switch_to_personal()
+		elif state == DeskState.OVERLAY_OPEN:
+			_hide_overlay()
+		else:
+			_open_pause_menu()
+		get_viewport().set_input_as_handled()
+
+# ── Save / Load ──
+
+func _collect_runtime_state() -> Dictionary:
+	var runtime: Dictionary = {}
+	runtime["game_started"] = _game_started
+	runtime["tabs"] = SaveManager.serialize_tabs(ide.tabs)
+	runtime["focused_index"] = ide.get_focused_index()
+	return runtime
+
+func _apply_runtime_state(runtime: Dictionary) -> void:
+	if runtime.is_empty():
+		return
+
+	# Tab-based restore
+	var tabs_data = runtime.get("tabs")
+	if tabs_data is Array and not tabs_data.is_empty():
+		ide.reset_to_idle()
+		var restored_tabs = SaveManager.deserialize_tabs(tabs_data)
+		for tab in restored_tabs:
+			ide.add_tab(tab)
+		var focus_idx = int(runtime.get("focused_index", 0))
+		if focus_idx >= 0 and focus_idx < ide.tabs.size():
+			ide._switch_to_tab(focus_idx)
+		elif not ide.tabs.is_empty():
+			ide._restore_tab_visual(0)
+		_update_hud_task_info()
+
+	# Backward compat: old saves with single active_contract
+	elif runtime.get("active_contract") != null:
+		ide.reset_to_idle()
+		var contract = runtime["active_contract"]
+		var tab = CodingTab.new()
+		tab.contract = contract
+		tab.total_tasks = contract.task_count
+		tab.task_index = contract.task_count - int(runtime.get("tasks_remaining", 0))
+		tab.difficulty_modifier = float(runtime.get("difficulty_modifier", 1.0))
+		var loop_data = runtime.get("coding_loop")
+		if loop_data is Dictionary and not loop_data.is_empty():
+			SaveManager.deserialize_coding_loop(tab.coding_loop, loop_data)
+		ide.add_tab(tab)
+		ide._restore_tab_visual(0)
+		_update_hud_task_info()
+
+	_update_click_power()
+
+# ── Pause Menu ──
+
+func _open_pause_menu():
+	_pause_open = true
+	pause_layer = CanvasLayer.new()
+	pause_layer.layer = 90
+	add_child(pause_layer)
+
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.6)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pause_layer.add_child(bg)
+
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pause_layer.add_child(center)
+
+	var panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.12, 0.16)
+	style.set_content_margin_all(24)
+	style.set_corner_radius_all(8)
+	style.border_color = Color(0.3, 0.3, 0.35)
+	style.set_border_width_all(1)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "PAUSED"
+	title.add_theme_font_size_override("font_size", 22)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var resume_btn = Button.new()
+	resume_btn.text = "Resume"
+	resume_btn.custom_minimum_size = Vector2(200, 40)
+	resume_btn.pressed.connect(_close_pause_menu)
+	vbox.add_child(resume_btn)
+
+	var save_btn = Button.new()
+	save_btn.text = "Save Game"
+	save_btn.custom_minimum_size = Vector2(200, 40)
+	save_btn.pressed.connect(_on_save_pressed)
+	vbox.add_child(save_btn)
+
+	var load_btn = Button.new()
+	load_btn.text = "Load Game"
+	load_btn.custom_minimum_size = Vector2(200, 40)
+	load_btn.pressed.connect(_on_load_pressed)
+	load_btn.disabled = not SaveManager.has_save()
+	vbox.add_child(load_btn)
+
+	var quit_btn = Button.new()
+	quit_btn.text = "Quit"
+	quit_btn.custom_minimum_size = Vector2(200, 40)
+	quit_btn.pressed.connect(func(): get_tree().quit())
+	vbox.add_child(quit_btn)
+
+func _close_pause_menu():
+	if pause_layer:
+		pause_layer.queue_free()
+		pause_layer = null
+	_pause_open = false
+
+func _on_save_pressed():
+	var runtime = _collect_runtime_state()
+	SaveManager.save_game(runtime)
+	_close_pause_menu()
+
+func _on_load_pressed():
+	var data = SaveManager.load_game()
+	if data.is_empty():
+		_close_pause_menu()
+		return
+	var runtime = SaveManager.apply_save(data)
+	_apply_runtime_state(runtime)
+	# Reset to desk view
+	if state == DeskState.ZOOMED_TO_MONITOR:
+		ide_layer.visible = false
+		state = DeskState.DESK
+		desk_scene.zoom_to_desk()
+	elif state == DeskState.OVERLAY_OPEN:
+		_hide_overlay()
+	hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
+	_update_ai_status()
+	_close_pause_menu()
 
 # ── Desk Interactions ──
 
@@ -315,8 +584,9 @@ func _on_laptop_clicked():
 func _on_door_clicked():
 	if state != DeskState.DESK:
 		return
-	hiring_panel.refresh()
-	_show_overlay(hiring_panel)
+	if not GameState.office_unlocked:
+		return
+	_switch_to_management()
 
 # ── Overlay Management ──
 
@@ -339,139 +609,122 @@ func _on_dimmer_input(event: InputEvent):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_hide_overlay()
 
+# ── Management Scene ──
+
+func _switch_to_management():
+	if not GameState.office_unlocked:
+		return
+	_in_management = true
+	desk_scene.visible = false
+	if state == DeskState.ZOOMED_TO_MONITOR:
+		ide_layer.visible = false
+	management_layer.visible = true
+	management_office.refresh()
+
+func _switch_to_personal():
+	_in_management = false
+	management_layer.visible = false
+	management_overlay_layer.visible = false
+	desk_scene.visible = true
+	if state == DeskState.ZOOMED_TO_MONITOR:
+		ide_layer.visible = true
+
+func _show_management_overlay(panel: Control):
+	_management_current_overlay = panel
+	panel.visible = true
+	management_overlay_layer.visible = true
+
+func _hide_management_overlay():
+	if _management_current_overlay:
+		_management_current_overlay.visible = false
+	_management_current_overlay = null
+	management_overlay_layer.visible = false
+
+func _on_management_dimmer_input(event: InputEvent):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_hide_management_overlay()
+
 # ── Contract Flow ──
 
 func _on_contract_accepted(contract: ClientContract, diff_mod: float):
-	# If office is unlocked and we have consultants, offer choice
-	if GameState.office_unlocked and not GameState.consultants.is_empty():
-		_show_contract_choice(contract, diff_mod)
-	else:
-		_work_personally(contract, diff_mod)
-
-func _show_contract_choice(contract: ClientContract, diff_mod: float):
-	_team_assign_contract = contract
-	_team_assign_diff_mod = diff_mod
-	_hide_overlay()
-	# Show a quick choice overlay
-	var choice_panel = PanelContainer.new()
-	var choice_style = StyleBoxFlat.new()
-	choice_style.bg_color = Color(0.14, 0.14, 0.18)
-	choice_style.set_content_margin_all(20)
-	choice_style.set_corner_radius_all(8)
-	choice_style.border_color = Color(0.3, 0.3, 0.35)
-	choice_style.set_border_width_all(1)
-	choice_panel.add_theme_stylebox_override("panel", choice_style)
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 12)
-	choice_panel.add_child(vbox)
-
-	var label = Label.new()
-	label.text = "How do you want to handle this contract?"
-	label.add_theme_font_size_override("font_size", 16)
-	vbox.add_child(label)
-
-	var contract_info = Label.new()
-	contract_info.text = "%s — %s (%d tasks, $%.0f/task)" % [
-		contract.client_name, contract.project_description,
-		contract.task_count, contract.payout_per_task
-	]
-	contract_info.add_theme_font_size_override("font_size", 13)
-	contract_info.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
-	vbox.add_child(contract_info)
-
-	var btn_row = HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", 12)
-	vbox.add_child(btn_row)
-
-	var personal_btn = Button.new()
-	personal_btn.text = "Work Personally (100% pay)"
-	personal_btn.custom_minimum_size = Vector2(200, 40)
-	personal_btn.pressed.connect(func():
-		choice_panel.queue_free()
-		_work_personally(_team_assign_contract, _team_assign_diff_mod)
-	)
-	btn_row.add_child(personal_btn)
-
-	var team_btn = Button.new()
-	team_btn.text = "Assign Team (70% pay)"
-	team_btn.custom_minimum_size = Vector2(200, 40)
-	team_btn.pressed.connect(func():
-		choice_panel.queue_free()
-		_assign_team(_team_assign_contract)
-	)
-	btn_row.add_child(team_btn)
-
-	# Show in overlay layer
-	state = DeskState.OVERLAY_OPEN
-	_current_overlay = choice_panel
-	overlay_layer.visible = true
-	var center = overlay_layer.get_child(1)  # CenterContainer
-	center.add_child(choice_panel)
+	_work_personally(contract, diff_mod)
 
 func _work_personally(contract: ClientContract, diff_mod: float):
-	active_contract = contract
-	tasks_remaining = contract.task_count
-	difficulty_modifier = diff_mod
+	# Check tab limit
+	var tab_limit = ai_tool_manager.get_tab_limit(GameState)
+	if ide.tabs.size() >= tab_limit:
+		hud.set_task_info("Tab limit reached! Upgrade Auto-Writer for more tabs.")
+		_hide_overlay()
+		return
+
+	var tab = CodingTab.new()
+	tab.contract = contract
+	tab.total_tasks = contract.task_count
+	tab.task_index = 0
+	tab.difficulty_modifier = diff_mod
+	ide.add_tab(tab)
 	_update_click_power()
 	_hide_overlay()
+
 	# Auto-zoom to monitor after accepting contract
-	_on_monitor_clicked()
-	# Wait for zoom to finish, then start task
+	if state == DeskState.DESK:
+		_on_monitor_clicked()
+
+	# Wait for zoom to finish, then start first task on this tab
 	var timer = get_tree().create_timer(0.35)
-	timer.timeout.connect(_start_next_task)
+	timer.timeout.connect(_start_next_task_on_tab.bind(tab))
 
-func _assign_team(contract: ClientContract):
-	# Assign all available consultants to this contract
-	var team: Array = []
-	for c in GameState.consultants:
-		# Check if already on another assignment
-		var busy = false
-		for a in GameState.active_assignments:
-			if c in a.consultants:
-				busy = true
-				break
-		if not busy:
-			team.append(c)
-	if team.is_empty():
-		# Fallback: no free consultants, work personally
-		_work_personally(contract, _team_assign_diff_mod)
+func _start_next_task_on_tab(tab: CodingTab):
+	if tab.is_contract_done():
+		_on_tab_contract_finished(tab)
 		return
-	consultant_manager.create_assignment(contract, team, GameState)
-	hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
-	_hide_overlay()
-
-func _start_next_task():
-	if tasks_remaining <= 0:
-		_on_contract_finished()
-		return
-	var tier = active_contract.tier
+	var tier = tab.contract.tier
 	var task = task_factory.generate_task(tier)
-	task.payout = active_contract.payout_per_task
-	task.difficulty = clampi(roundi(task.difficulty * difficulty_modifier), 1, 10)
-	task.total_clicks = roundi(task.total_clicks * difficulty_modifier)
-	hud.set_task_info("%s — Task %d/%d" % [
-		active_contract.client_name,
-		active_contract.task_count - tasks_remaining + 1,
-		active_contract.task_count
-	])
-	ide.start_task(task)
+	task.payout = tab.contract.payout_per_task
+	task.difficulty = clampi(roundi(task.difficulty * tab.difficulty_modifier), 1, 10)
+	task.total_clicks = roundi(task.total_clicks * tab.difficulty_modifier)
+	_update_hud_task_info()
+	ide.start_task_on_tab(tab, task)
 
-func _on_task_completed(_task: CodingTask):
-	tasks_remaining -= 1
-	if tasks_remaining > 0:
+func _on_tab_task_done(task: CodingTask, tab: CodingTab):
+	tab.task_index += 1
+	if not tab.is_contract_done():
 		var delay = get_tree().create_timer(1.5)
-		delay.timeout.connect(_start_next_task)
+		delay.timeout.connect(_start_next_task_on_tab.bind(tab))
 	else:
-		_on_contract_finished()
+		_on_tab_contract_finished(tab)
+	_update_hud_task_info()
 
-func _on_contract_finished():
-	active_contract = null
-	hud.set_task_info("Contract complete! Find a new one.")
-	ide.reset_to_idle()
-	# Zoom back to desk
-	if state == DeskState.ZOOMED_TO_MONITOR:
-		_on_stand_up()
+func _on_tab_contract_finished(tab: CodingTab):
+	var idx = ide.tabs.find(tab)
+	if idx >= 0:
+		ide.remove_tab(idx)
+	if ide.tabs.is_empty():
+		hud.set_task_info("Contract complete! Find a new one.")
+		# Zoom back to desk if at monitor
+		if state == DeskState.ZOOMED_TO_MONITOR:
+			_on_stand_up()
+	else:
+		_update_hud_task_info()
+
+func _update_hud_task_info():
+	if ide.tabs.is_empty():
+		hud.set_task_info("")
+		return
+	if ide.tabs.size() == 1:
+		var tab = ide.tabs[0]
+		hud.set_task_info("%s — Task %d/%d" % [
+			tab.contract.client_name,
+			tab.task_index + 1,
+			tab.total_tasks
+		])
+	else:
+		var active_count = ide.tabs.size()
+		var stuck_count = ide.get_stuck_count()
+		var info = "%d contracts active" % active_count
+		if stuck_count > 0:
+			info += " (%d stuck)" % stuck_count
+		hud.set_task_info(info)
 
 func _update_click_power():
 	ide.set_click_power(skill_manager.calculate_click_power(GameState))
@@ -485,46 +738,90 @@ func _update_ai_status():
 			active_tools += 1
 	hud.update_ai_info(active_tools)
 
+# ── Management Actions ──
+
+func _on_management_assign(consultant: ConsultantData, contract: ClientContract):
+	consultant.location = ConsultantData.Location.ON_PROJECT
+	consultant.training_skill = ""
+	consultant_manager.create_assignment(contract, [consultant], GameState)
+	_hide_management_overlay()
+	management_office.refresh()
+
+func _on_management_rental(consultant: ConsultantData, offer: Dictionary):
+	consultant_manager.place_on_rental(
+		consultant, offer["client_name"], offer["rate_per_tick"], offer["duration"], GameState
+	)
+	_hide_management_overlay()
+	management_office.refresh()
+
+func _on_fire_consultant(consultant: ConsultantData):
+	if not consultant.is_available():
+		return
+	GameState.remove_consultant(consultant)
+	staff_roster.refresh()
+	management_office.refresh()
+
+func _on_train_consultant(consultant: ConsultantData, skill_id: String):
+	consultant_manager.start_training(consultant, skill_id)
+	staff_roster.refresh()
+	management_office.refresh()
+
+func _on_stop_training(consultant: ConsultantData):
+	consultant_manager.stop_training(consultant)
+	staff_roster.refresh()
+	management_office.refresh()
+
+func _on_set_remote(consultant: ConsultantData, remote: bool):
+	if remote:
+		consultant.location = ConsultantData.Location.REMOTE
+	else:
+		var in_office = GameState.get_consultants_by_location(ConsultantData.Location.IN_OFFICE).size()
+		if in_office < GameState.desk_capacity:
+			consultant.location = ConsultantData.Location.IN_OFFICE
+	staff_roster.refresh()
+	management_office.refresh()
+
+func _on_rental_extension_accepted(rental: ConsultantRental):
+	consultant_manager.extend_rental(rental, rental.total_duration)
+	_pending_extensions.erase(rental)
+	management_inbox.set_notifications(_pending_extensions, _pending_issues)
+
+func _on_management_issue_choice(issue: ManagementIssue, choice_index: int):
+	consultant_manager.apply_issue_choice(issue, choice_index, GameState)
+	_pending_issues.erase(issue)
+	management_inbox.set_notifications(_pending_extensions, _pending_issues)
+
 # ── Random Events + Management Issues ──
 
 func _on_event_timer():
 	var event = event_manager.generate_event()
-	desk_scene.set_email_badge_count(event_manager.get_unread_count() + _pending_issues.size())
+	desk_scene.set_email_badge_count(event_manager.get_unread_count())
 	EventBus.random_event_received.emit(event)
 
 func _on_email_choice(event: RandomEvent, choice_index: int):
-	# Check if this is a management issue disguised as an event
-	var handled_issue = false
-	for i in range(_pending_issues.size()):
-		var issue = _pending_issues[i]
-		if event.id == "mgmt_" + issue.id + "_" + issue.affected_consultant_id:
-			consultant_manager.apply_issue_choice(issue, choice_index, GameState)
-			_pending_issues.remove_at(i)
-			handled_issue = true
-			break
-
-	if not handled_issue:
-		event_manager.apply_choice(event, choice_index, GameState)
-
-	desk_scene.set_email_badge_count(event_manager.get_unread_count() + _pending_issues.size())
+	event_manager.apply_choice(event, choice_index, GameState)
+	desk_scene.set_email_badge_count(event_manager.get_unread_count())
 	_refresh_email_display()
 	EventBus.random_event_resolved.emit(event)
-	if event_manager.pending_events.is_empty() and _pending_issues.is_empty():
+	if event_manager.pending_events.is_empty():
 		_hide_overlay()
 
 func _refresh_email_display():
-	# Merge random events and management issues into email display
-	var all_events: Array = event_manager.pending_events.duplicate()
-	for issue in _pending_issues:
-		# Convert ManagementIssue to RandomEvent for display
-		var event = RandomEvent.create(
-			"mgmt_" + issue.id + "_" + issue.affected_consultant_id,
-			"[Team] " + issue.title,
-			issue.description,
-			issue.choices
-		)
-		all_events.append(event)
-	email_panel.display_events(all_events)
+	email_panel.display_events(event_manager.pending_events.duplicate())
+
+# ── Message Expiry ──
+
+func _expire_old_messages():
+	var now = Time.get_ticks_msec() / 1000.0
+	var changed = false
+	var j = event_manager.pending_events.size() - 1
+	while j >= 0:
+		if event_manager.pending_events[j].is_expired(now):
+			event_manager.pending_events.remove_at(j)
+			changed = true
+		j -= 1
+	if changed:
+		desk_scene.set_email_badge_count(event_manager.get_unread_count())
 
 # ── Salary Timer ──
 
