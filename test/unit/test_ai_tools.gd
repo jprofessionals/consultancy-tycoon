@@ -77,21 +77,21 @@ func test_cooldown_decreases_with_tier():
 func test_runner_does_nothing_when_idle():
 	var runner = load("res://src/logic/ai_tool_runner.gd").new(manager)
 	state.set_ai_tool_tier("auto_writer", 3)
-	var loop = load("res://src/logic/coding_loop.gd").new()
+	var tab = CodingTab.new()
 	# Loop is IDLE, runner should not crash or change state
-	runner.tick(1.0, loop, state)
-	assert_eq(loop.state, CodingLoop.State.IDLE)
+	runner.tick(1.0, [tab], 0, state)
+	assert_eq(tab.coding_loop.state, CodingLoop.State.IDLE)
 
 func test_runner_progresses_writing():
 	seed(42)
 	var runner = load("res://src/logic/ai_tool_runner.gd").new(manager)
 	state.set_ai_tool_tier("auto_writer", 5)  # High tier = high reliability
-	var loop = load("res://src/logic/coding_loop.gd").new()
+	var tab = CodingTab.new()
 	var task = load("res://src/data/coding_task.gd").new()
 	task.total_clicks = 5
-	loop.start_task(task)
+	tab.coding_loop.start_task(task)
 	# Tick enough times for cooldown to expire and auto_writer to act
 	for i in range(30):
-		runner.tick(1.0, loop, state)
+		runner.tick(1.0, [tab], 0, state)
 	# Progress should have advanced (auto_writer clicked at least once)
-	assert_gt(loop.progress, 0.0, "Copilot should have made some progress")
+	assert_gt(tab.coding_loop.progress, 0.0, "Copilot should have made some progress")

@@ -7,10 +7,10 @@ func _init():
 	_define_tools()
 
 func _define_tools():
-	_tools.append(_make_tool("auto_writer", "Auto-Writer", "Auto-types code for you", "writing", 2000.0, 5, 5.0, 0.4))
-	_tools.append(_make_tool("auto_reviewer", "Auto-reviewer", "Automatically submits code reviews", "reviewing", 1500.0, 5, 6.0, 0.45))
-	_tools.append(_make_tool("merge_resolver", "Merge Resolver", "Picks the correct side in merge conflicts", "conflict", 1200.0, 4, 4.0, 0.35))
-	_tools.append(_make_tool("ci_fixer", "CI Fixer", "Reduces CI failure chance", "ci", 1000.0, 4, 8.0, 0.5))
+	_tools.append(_make_tool("auto_writer", "Auto-Writer", "Auto-types code for you", "writing", 2000.0, 5, 2.0, 0.45))
+	_tools.append(_make_tool("auto_reviewer", "Auto-reviewer", "Automatically submits code reviews", "reviewing", 1500.0, 5, 2.5, 0.50))
+	_tools.append(_make_tool("merge_resolver", "Merge Resolver", "Picks the correct side in merge conflicts", "conflict", 1200.0, 4, 1.5, 0.40))
+	_tools.append(_make_tool("ci_fixer", "CI Fixer", "Reduces CI failure chance", "ci", 1000.0, 4, 4.0, 0.5))
 
 func _make_tool(id: String, tool_name: String, desc: String, target: String, base_cost: float, max_tier: int, cooldown: float, reliability: float) -> AiToolData:
 	var t = AiToolData.new()
@@ -33,6 +33,9 @@ func get_tool(tool_id: String) -> AiToolData:
 		if t.id == tool_id:
 			return t
 	return null
+
+func get_tab_limit(state: Node) -> int:
+	return maxi(1, state.get_ai_tool_tier("auto_writer") + 1)
 
 func try_upgrade(tool: AiToolData, state: Node) -> bool:
 	var current_tier = state.get_ai_tool_tier(tool.id)

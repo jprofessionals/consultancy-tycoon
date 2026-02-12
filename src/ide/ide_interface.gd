@@ -1,9 +1,19 @@
 extends PanelContainer
 
-var coding_loop: CodingLoop = CodingLoop.new()
-var current_snippet: Array = []
-var lines_revealed: int = 0
+# Multi-tab state
+var tabs: Array = []  # Array of CodingTab
+var _focused_index: int = -1
 var click_power: float = 1.0
+
+# Backward-compatible property: returns focused tab's coding_loop
+var coding_loop: CodingLoop:
+	get:
+		if _focused_index >= 0 and _focused_index < tabs.size():
+			return tabs[_focused_index].coding_loop
+		return _idle_loop
+
+# Fallback loop for when no tabs exist
+var _idle_loop: CodingLoop = CodingLoop.new()
 
 @onready var code_display: RichTextLabel
 @onready var progress_bar: ProgressBar
@@ -13,12 +23,17 @@ var click_power: float = 1.0
 @onready var conflict_panel: HBoxContainer
 @onready var notification_area: PanelContainer
 @onready var keyboard_panel: PanelContainer
+var _tab_bar: HBoxContainer
+var _tab_bar_container: PanelContainer
 
 var _key_buttons: Array[Button] = []
 var _key_buttons_by_label: Dictionary = {}
 var _keyboard_enabled: bool = false
 var _combo_sequence: Array[String] = []
 const _COMBO_TARGET = ["CTRL", "ALT", "DEL"]
+
+# Stuck tab flash timing
+var _stuck_flash_timer: float = 0.0
 
 # Review change suggestions to show in code
 const REVIEW_CHANGES = [
@@ -34,30 +49,57 @@ func _ready():
 	_build_ui()
 	_connect_signals()
 
+func _process(_delta: float):
+	if tabs.size() <= 1:
+		return
+	# Pulse stuck tab buttons red
+	_stuck_flash_timer += _delta
+	var alpha = 0.4 + 0.4 * abs(sin(_stuck_flash_timer * 3.0))
+	for i in range(_tab_bar.get_child_count()):
+		var btn = _tab_bar.get_child(i) as Button
+		if i < tabs.size() and tabs[i].stuck:
+			var style = StyleBoxFlat.new()
+			style.bg_color = Color(0.8, 0.2, 0.2, alpha)
+			style.set_corner_radius_all(3)
+			btn.add_theme_stylebox_override("normal", style)
+		elif i != _focused_index:
+			btn.remove_theme_stylebox_override("normal")
+
 func _unhandled_input(event: InputEvent):
 	if not is_visible_in_tree():
 		return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
+	if _focused_index < 0:
+		return
 
+	var loop = coding_loop
 	var keycode = event.keycode
+
+	# Tab switching: Ctrl+1-9
+	if event.ctrl_pressed and keycode >= KEY_1 and keycode <= KEY_9:
+		var tab_idx = keycode - KEY_1
+		if tab_idx < tabs.size():
+			_switch_to_tab(tab_idx)
+			get_viewport().set_input_as_handled()
+		return
 
 	# Shift+R → submit for review
 	if keycode == KEY_R and event.shift_pressed:
-		if coding_loop.state == CodingLoop.State.REVIEWING:
+		if loop.state == CodingLoop.State.REVIEWING:
 			_do_review()
 			_flash_key_by_label("ENTER")
 			get_viewport().set_input_as_handled()
 		return
 
 	# Arrow keys → merge conflict resolution
-	if coding_loop.state == CodingLoop.State.CONFLICT:
+	if loop.state == CodingLoop.State.CONFLICT:
 		if keycode == KEY_LEFT:
-			coding_loop.resolve_conflict("left")
+			loop.resolve_conflict("left")
 			get_viewport().set_input_as_handled()
 			return
 		elif keycode == KEY_RIGHT:
-			coding_loop.resolve_conflict("right")
+			loop.resolve_conflict("right")
 			get_viewport().set_input_as_handled()
 			return
 
@@ -68,12 +110,12 @@ func _unhandled_input(event: InputEvent):
 
 	_check_combo(label)
 
-	if coding_loop.state == CodingLoop.State.WRITING:
-		coding_loop.perform_click(click_power)
+	if loop.state == CodingLoop.State.WRITING:
+		loop.perform_click(click_power)
 		_flash_key_by_label(label)
 		get_viewport().set_input_as_handled()
-	elif coding_loop.state == CodingLoop.State.FIXING:
-		coding_loop.perform_click(click_power)
+	elif loop.state == CodingLoop.State.FIXING:
+		loop.perform_click(click_power)
 		_flash_key_by_label(label)
 		get_viewport().set_input_as_handled()
 
@@ -140,6 +182,20 @@ func _build_ui():
 	title.text = "  CONSULTANCY IDE v1.0"
 	title.add_theme_font_size_override("font_size", 14)
 	title_bar.add_child(title)
+
+	# Tab bar (hidden when <= 1 tab)
+	_tab_bar_container = PanelContainer.new()
+	_tab_bar_container.visible = false
+	var tab_style = StyleBoxFlat.new()
+	tab_style.bg_color = Color(0.12, 0.12, 0.15)
+	tab_style.set_content_margin_all(4)
+	tab_style.set_corner_radius_all(3)
+	_tab_bar_container.add_theme_stylebox_override("panel", tab_style)
+	vbox.add_child(_tab_bar_container)
+
+	_tab_bar = HBoxContainer.new()
+	_tab_bar.add_theme_constant_override("separation", 4)
+	_tab_bar_container.add_child(_tab_bar)
 
 	# Task label
 	task_label = Label.new()
@@ -331,41 +387,193 @@ func _trigger_bsod():
 	timer.timeout.connect(func(): bsod.queue_free())
 
 func _connect_signals():
-	coding_loop.state_changed.connect(_on_state_changed)
-	coding_loop.progress_changed.connect(_on_progress_changed)
-	coding_loop.conflict_appeared.connect(_on_conflict_appeared)
-	coding_loop.task_done.connect(_on_task_done)
 	EventBus.ai_tool_acted.connect(_on_ai_tool_acted)
 
-func start_task(task: CodingTask):
-	current_snippet = FakeCode.get_random_snippet()
-	lines_revealed = 0
+# ── Tab Management ──
+
+func add_tab(tab: CodingTab) -> int:
+	tabs.append(tab)
+	_connect_tab_signals(tab)
+	var idx = tabs.size() - 1
+	if _focused_index < 0:
+		_focused_index = idx
+	_rebuild_tab_bar()
+	return idx
+
+func remove_tab(index: int):
+	if index < 0 or index >= tabs.size():
+		return
+	var tab = tabs[index]
+	_disconnect_tab_signals(tab)
+	tabs.remove_at(index)
+	# Adjust focused index
+	if tabs.is_empty():
+		_focused_index = -1
+		_show_idle_state()
+	elif _focused_index >= tabs.size():
+		_focused_index = tabs.size() - 1
+		_restore_tab_visual(_focused_index)
+	elif _focused_index == index:
+		_focused_index = mini(_focused_index, tabs.size() - 1)
+		_restore_tab_visual(_focused_index)
+	_rebuild_tab_bar()
+
+func _switch_to_tab(index: int):
+	if index < 0 or index >= tabs.size() or index == _focused_index:
+		return
+	_focused_index = index
+	var tab = tabs[index]
+	# Clear stuck when player focuses the tab
+	if tab.stuck:
+		tab.stuck = false
+		var bus = _get_event_bus()
+		if bus:
+			bus.tab_unstuck.emit(index)
+	_restore_tab_visual(index)
+	_rebuild_tab_bar()
+
+func get_focused_index() -> int:
+	return _focused_index
+
+func get_stuck_count() -> int:
+	var count = 0
+	for tab in tabs:
+		if tab.stuck:
+			count += 1
+	return count
+
+func start_task_on_tab(tab: CodingTab, task: CodingTask):
+	tab.code_snippet = FakeCode.get_random_snippet()
+	tab.lines_revealed = 0
+	tab.coding_loop.start_task(task)
+	# Only update display if this is the focused tab
+	var idx = tabs.find(tab)
+	if idx == _focused_index:
+		code_display.text = ""
+		progress_bar.value = 0.0
+		task_label.text = "Task: " + task.title
+		_update_ui()
+
+func _restore_tab_visual(index: int):
+	if index < 0 or index >= tabs.size():
+		return
+	var tab = tabs[index]
+	# Rebuild code display from tab's visual state
 	code_display.text = ""
-	progress_bar.value = 0.0
-	coding_loop.start_task(task)
-	task_label.text = "Task: " + task.title
+	for i in range(tab.lines_revealed):
+		if i < tab.code_snippet.size():
+			code_display.append_text(_syntax_highlight(tab.code_snippet[i]) + "\n")
+	progress_bar.value = tab.coding_loop.progress
+	if tab.coding_loop.current_task:
+		task_label.text = "Task: " + tab.coding_loop.current_task.title
+	else:
+		task_label.text = tab.get_tab_label()
 	_update_ui()
 
+func _show_idle_state():
+	code_display.text = ""
+	progress_bar.value = 0.0
+	task_label.text = "No active task"
+	status_label.text = "IDLE — Go to Contracts to find work"
+	_set_keyboard_enabled(false)
+	notification_area.visible = false
+	review_panel.visible = false
+	conflict_panel.visible = false
+
+func _rebuild_tab_bar():
+	# Clear existing buttons
+	for child in _tab_bar.get_children():
+		child.queue_free()
+	# Show tab bar only when more than 1 tab
+	_tab_bar_container.visible = tabs.size() > 1
+	for i in range(tabs.size()):
+		var tab = tabs[i]
+		var btn = Button.new()
+		btn.text = tab.get_tab_label()
+		btn.custom_minimum_size = Vector2(100, 28)
+		btn.add_theme_font_size_override("font_size", 12)
+		if i == _focused_index:
+			btn.disabled = true
+		btn.pressed.connect(_switch_to_tab.bind(i))
+		_tab_bar.add_child(btn)
+
+# ── Tab Signal Routing ──
+
+func _connect_tab_signals(tab: CodingTab):
+	tab.coding_loop.state_changed.connect(_on_tab_state_changed.bind(tab))
+	tab.coding_loop.progress_changed.connect(_on_tab_progress_changed.bind(tab))
+	tab.coding_loop.conflict_appeared.connect(_on_tab_conflict_appeared.bind(tab))
+	tab.coding_loop.task_done.connect(_on_tab_task_done.bind(tab))
+
+func _disconnect_tab_signals(tab: CodingTab):
+	if tab.coding_loop.state_changed.is_connected(_on_tab_state_changed):
+		tab.coding_loop.state_changed.disconnect(_on_tab_state_changed)
+	if tab.coding_loop.progress_changed.is_connected(_on_tab_progress_changed):
+		tab.coding_loop.progress_changed.disconnect(_on_tab_progress_changed)
+	if tab.coding_loop.conflict_appeared.is_connected(_on_tab_conflict_appeared):
+		tab.coding_loop.conflict_appeared.disconnect(_on_tab_conflict_appeared)
+	if tab.coding_loop.task_done.is_connected(_on_tab_task_done):
+		tab.coding_loop.task_done.disconnect(_on_tab_task_done)
+
+func _is_focused_tab(tab: CodingTab) -> bool:
+	if _focused_index < 0 or _focused_index >= tabs.size():
+		return false
+	return tabs[_focused_index] == tab
+
+func _on_tab_state_changed(_new_state: CodingLoop.State, tab: CodingTab):
+	if _is_focused_tab(tab):
+		_update_ui()
+
+func _on_tab_progress_changed(new_progress: float, tab: CodingTab):
+	if _is_focused_tab(tab):
+		progress_bar.value = new_progress
+		_sync_code_to_progress(new_progress, tab)
+
+func _on_tab_conflict_appeared(left_code: String, right_code: String, tab: CodingTab):
+	if _is_focused_tab(tab):
+		_show_conflict_ui(left_code, right_code, tab)
+
+func _on_tab_task_done(task: CodingTask, tab: CodingTab):
+	GameState.add_money(task.payout)
+	GameState.add_reputation(task.difficulty * 1.0)
+	if _is_focused_tab(tab):
+		status_label.text = "COMPLETE — Earned $%.0f" % task.payout
+		notification_area.visible = false
+		review_panel.visible = false
+		conflict_panel.visible = false
+	EventBus.tab_task_done.emit(task, tab)
+
+# ── Actions ──
+
 func _on_action_pressed():
-	match coding_loop.state:
+	if _focused_index < 0:
+		return
+	var loop = coding_loop
+	match loop.state:
 		CodingLoop.State.WRITING:
-			coding_loop.perform_click(click_power)
+			loop.perform_click(click_power)
 		CodingLoop.State.REVIEWING:
 			pass  # handled by approve button in notification area
 		CodingLoop.State.FIXING:
-			coding_loop.perform_click(click_power)
+			loop.perform_click(click_power)
 		CodingLoop.State.IDLE:
 			pass  # handled externally (bidding system starts tasks)
 
-func _sync_code_to_progress(progress: float):
-	if current_snippet.is_empty():
+func _sync_code_to_progress(progress: float, tab: CodingTab = null):
+	if tab == null:
+		if _focused_index >= 0 and _focused_index < tabs.size():
+			tab = tabs[_focused_index]
+		else:
+			return
+	if tab.code_snippet.is_empty():
 		return
-	var target_lines = ceili(progress * current_snippet.size())
-	while lines_revealed < target_lines and lines_revealed < current_snippet.size():
-		var line = current_snippet[lines_revealed]
+	var target_lines = ceili(progress * tab.code_snippet.size())
+	while tab.lines_revealed < target_lines and tab.lines_revealed < tab.code_snippet.size():
+		var line = tab.code_snippet[tab.lines_revealed]
 		var colored = _syntax_highlight(line)
-		code_display.append_text(colored + "\n")
-		lines_revealed += 1
+		if _is_focused_tab(tab):
+			code_display.append_text(colored + "\n")
+		tab.lines_revealed += 1
 
 func _syntax_highlight(line: String) -> String:
 	var result = line
@@ -380,11 +588,14 @@ func _syntax_highlight(line: String) -> String:
 	return result
 
 func _do_review():
-	var reject_chance = coding_loop.current_task.get_review_reject_chance()
+	if _focused_index < 0:
+		return
+	var loop = coding_loop
+	var reject_chance = loop.current_task.get_review_reject_chance()
 	# Player skill reduces reject chance
 	var skill_modifier = GameState.get_skill_level("code_quality") * 0.05
 	var approved = randf() > (reject_chance - skill_modifier)
-	coding_loop.resolve_review(approved)
+	loop.resolve_review(approved)
 	if approved:
 		_show_review_comment("[color=#4ec9b0]Reviewer:[/color] LGTM! Approved.")
 	else:
@@ -409,7 +620,7 @@ func _show_review_comment(text: String):
 	review_panel.visible = true
 	notification_area.visible = true
 
-func _on_conflict_appeared(left_code: String, right_code: String):
+func _show_conflict_ui(left_code: String, right_code: String, tab: CodingTab):
 	conflict_panel.visible = true
 	notification_area.visible = true
 	for child in conflict_panel.get_children():
@@ -418,16 +629,17 @@ func _on_conflict_appeared(left_code: String, right_code: String):
 	var left_btn = Button.new()
 	left_btn.text = "Accept Local\n" + left_code
 	left_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_btn.pressed.connect(func(): coding_loop.resolve_conflict("left"))
+	left_btn.pressed.connect(func(): tab.coding_loop.resolve_conflict("left"))
 	conflict_panel.add_child(left_btn)
 
 	var right_btn = Button.new()
 	right_btn.text = "Accept Remote\n" + right_code
 	right_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_btn.pressed.connect(func(): coding_loop.resolve_conflict("right"))
+	right_btn.pressed.connect(func(): tab.coding_loop.resolve_conflict("right"))
 	conflict_panel.add_child(right_btn)
 
 func _on_ai_tool_acted(tool_id: String, action: String, success: bool):
+	# Only show visual feedback for the focused tab
 	match action:
 		"write":
 			if success:
@@ -471,30 +683,19 @@ func _flash_ai_key_fail():
 	var timer = get_tree().create_timer(0.12)
 	timer.timeout.connect(func(): random_btn.remove_theme_stylebox_override("normal"))
 
-func _on_state_changed(new_state: CodingLoop.State):
-	_update_ui()
-
-func _on_progress_changed(new_progress: float):
-	progress_bar.value = new_progress
-	_sync_code_to_progress(new_progress)
-
-func _on_task_done(task: CodingTask):
-	GameState.add_money(task.payout)
-	GameState.add_reputation(task.difficulty * 1.0)
-	status_label.text = "COMPLETE — Earned $%.0f" % task.payout
-	notification_area.visible = false
-	review_panel.visible = false
-	conflict_panel.visible = false
-
 func _update_ui():
 	conflict_panel.visible = false
 	review_panel.visible = false
 	notification_area.visible = false
 	_set_keyboard_enabled(true)
+	if _focused_index < 0 or _focused_index >= tabs.size():
+		_show_idle_state()
+		return
+	var loop = coding_loop
 	var has_ai_writer = GameState.get_ai_tool_tier("auto_writer") > 0
 	var has_ai_reviewer = GameState.get_ai_tool_tier("auto_reviewer") > 0
 	var has_ai_merger = GameState.get_ai_tool_tier("merge_resolver") > 0
-	match coding_loop.state:
+	match loop.state:
 		CodingLoop.State.IDLE:
 			status_label.text = "IDLE — Go to Contracts to find work"
 			_set_keyboard_enabled(false)
@@ -514,7 +715,7 @@ func _update_ui():
 			if not has_ai_reviewer:
 				_show_review_button()
 		CodingLoop.State.FIXING:
-			status_label.text = "FIXING — %d changes remaining — Type to fix" % coding_loop.review_changes_needed
+			status_label.text = "FIXING — %d changes remaining — Type to fix" % loop.review_changes_needed
 		CodingLoop.State.CONFLICT:
 			status_label.text = "MERGE CONFLICT — Left/Right arrow to pick a side"
 			_set_keyboard_enabled(false)
@@ -538,13 +739,20 @@ func _set_keyboard_enabled(enabled: bool):
 		btn.disabled = !enabled
 
 func reset_to_idle():
-	coding_loop.reset()
-	code_display.text = ""
-	progress_bar.value = 0.0
-	task_label.text = "No active task"
-	current_snippet = []
-	lines_revealed = 0
-	_update_ui()
+	# Remove all tabs
+	for tab in tabs.duplicate():
+		var idx = tabs.find(tab)
+		if idx >= 0:
+			_disconnect_tab_signals(tab)
+	tabs.clear()
+	_focused_index = -1
+	_show_idle_state()
+	_rebuild_tab_bar()
 
 func set_click_power(power: float):
 	click_power = power
+
+func _get_event_bus() -> Node:
+	if is_inside_tree():
+		return EventBus
+	return null

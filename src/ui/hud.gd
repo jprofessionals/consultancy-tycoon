@@ -5,6 +5,7 @@ var reputation_label: Label
 var task_label: Label
 var ai_label: Label
 var team_label: Label
+var stuck_label: Label
 
 func _ready():
 	_build_ui()
@@ -38,6 +39,12 @@ func _build_ui():
 	team_label.add_theme_color_override("font_color", Color(0.7, 0.6, 0.4))
 	add_child(team_label)
 
+	stuck_label = Label.new()
+	stuck_label.text = ""
+	stuck_label.add_theme_font_size_override("font_size", 14)
+	stuck_label.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+	add_child(stuck_label)
+
 	task_label = Label.new()
 	task_label.text = ""
 	task_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -64,3 +71,9 @@ func update_team_info(consultant_count: int, assignment_count: int):
 		team_label.text = "Team: %d (%d jobs)" % [consultant_count, assignment_count]
 	else:
 		team_label.text = ""
+
+func update_stuck_count(count: int):
+	if count > 0:
+		stuck_label.text = "STUCK: %d" % count
+	else:
+		stuck_label.text = ""
