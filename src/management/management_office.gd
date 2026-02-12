@@ -25,6 +25,11 @@ const HALF_H = 76.0
 const GRID_COLS = 8
 const GRID_ROWS = 4
 
+# Preloaded isometric textures (used in _build_desks which runs on purchase)
+const DESK_TEX = preload("res://assets/kenney-furniture/isometric/desk_SE.png")
+const CHAIR_TEX = preload("res://assets/kenney-furniture/isometric/chairDesk_SE.png")
+const MONITOR_TEX = preload("res://assets/kenney-furniture/isometric/computerScreen_SE.png")
+
 # Colors
 const FLOOR_COLOR = Color(0.22, 0.24, 0.26)
 const WALL_COLOR = Color(0.25, 0.27, 0.3)
@@ -365,10 +370,6 @@ func _build_desks():
 	var vp = _get_vp()
 	var origin = _get_grid_origin(vp)
 
-	var desk_tex = load("res://assets/kenney-furniture/isometric/desk_SE.png")
-	var chair_tex = load("res://assets/kenney-furniture/isometric/chairDesk_SE.png")
-	var monitor_tex = load("res://assets/kenney-furniture/isometric/computerScreen_SE.png")
-
 	for i in desk_count:
 		var col = i % GRID_COLS
 		var row = 1 + i / GRID_COLS  # Row 0 is the wall, desks start at row 1
@@ -376,7 +377,7 @@ func _build_desks():
 
 		# Chair (behind desk, z_index -1)
 		var chair = TextureRect.new()
-		chair.texture = chair_tex
+		chair.texture = CHAIR_TEX
 		chair.position = iso_pos + Vector2(75, -10)
 		chair.z_index = -1
 		chair.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -385,7 +386,7 @@ func _build_desks():
 
 		# Desk surface
 		var desk = TextureRect.new()
-		desk.texture = desk_tex
+		desk.texture = DESK_TEX
 		desk.position = iso_pos + Vector2(45, 20)
 		desk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(desk)
@@ -393,7 +394,7 @@ func _build_desks():
 
 		# Monitor on desk
 		var monitor = TextureRect.new()
-		monitor.texture = monitor_tex
+		monitor.texture = MONITOR_TEX
 		monitor.position = iso_pos + Vector2(70, -10)
 		monitor.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(monitor)
@@ -466,7 +467,7 @@ func refresh():
 
 	var in_office = GameState.get_consultants_by_location(ConsultantData.Location.IN_OFFICE)
 	var away_consultants = _get_away_consultants()
-	var occupied_count = in_office.size() + away_consultants.size()
+	var occupied_count = mini(in_office.size() + away_consultants.size(), _desk_nodes.size())
 
 	# Place in-office consultants at desks
 	for i in in_office.size():
@@ -564,7 +565,7 @@ func _create_away_label(consultant: ConsultantData, desk_pos: Vector2):
 func _get_away_consultants() -> Array:
 	var away: Array = []
 	for c in GameState.consultants:
-		if c.location != ConsultantData.Location.IN_OFFICE:
+		if c.location == ConsultantData.Location.ON_PROJECT or c.location == ConsultantData.Location.ON_RENTAL:
 			away.append(c)
 	return away
 
