@@ -16,3 +16,18 @@ signal skill_purchased(skill_id)
 # Economy signals
 signal money_changed(new_amount)
 signal reputation_changed(new_amount)
+
+# Random event signals
+signal random_event_received(event)
+signal random_event_resolved(event)
+
+# AI tool signals
+signal ai_tool_upgraded(tool_id, tier)
+signal ai_tool_acted(tool_id, action, success)
+
+# Office / hiring signals
+signal office_unlocked
+signal consultant_hired(consultant)
+signal consultant_left(consultant)
+signal assignment_completed(assignment)
+signal management_issue(issue)

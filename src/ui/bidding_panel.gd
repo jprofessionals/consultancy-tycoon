@@ -5,6 +5,7 @@ var active_contracts: Array[ClientContract] = []
 var contract_list: VBoxContainer
 
 signal contract_accepted(contract: ClientContract, difficulty_modifier: float)
+signal close_requested
 
 func _ready():
 	_build_ui()
@@ -21,10 +22,20 @@ func _build_ui():
 	vbox.add_theme_constant_override("separation", 8)
 	margin.add_child(vbox)
 
+	var header = HBoxContainer.new()
+	vbox.add_child(header)
+
 	var title = Label.new()
 	title.text = "Available Contracts"
 	title.add_theme_font_size_override("font_size", 18)
-	vbox.add_child(title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+
+	var close_btn = Button.new()
+	close_btn.text = "X"
+	close_btn.custom_minimum_size = Vector2(32, 32)
+	close_btn.pressed.connect(func(): close_requested.emit())
+	header.add_child(close_btn)
 
 	contract_list = VBoxContainer.new()
 	contract_list.add_theme_constant_override("separation", 4)
