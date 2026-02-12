@@ -32,6 +32,9 @@ godot --path /home/lars/Prosjekter/consultancy-tycoon --editor
 - **CodingTask** (`src/data/coding_task.gd`) — A single coding task with difficulty, payout, click requirements, review/conflict chance calculations.
 - **ClientContract** (`src/data/client_contract.gd`) — A client contract with tier, task count, payout, skill requirements.
 - **SkillData** (`src/data/skill_data.gd`) — A purchasable skill with exponential cost scaling.
+- **MergeConflict** (`src/data/merge_conflict.gd`) — Multi-chunk merge conflict with base lines, conflict chunks, resolution tracking, merged output.
+- **ConflictChunk** (`src/data/conflict_chunk.gd`) — Single conflict hunk: local lines, remote lines, optional correct resolution.
+- **MergeConflictFactory** (`src/data/merge_conflict_factory.gd`) — Generates merge conflicts: algorithmic (easy, any-valid) + curated (tricky, one correct answer). Tier-scaled chunk count.
 - **ConsultantData** (`src/data/consultant_data.gd`) — Consultant with skills, salary, trait, morale, location (IN_OFFICE/REMOTE/ON_PROJECT/ON_RENTAL), training state.
 - **ConsultantRental** (`src/data/consultant_rental.gd`) — A rental placement with duration, rate, extension window tracking.
 - **ConsultantAssignment** (`src/data/consultant_assignment.gd`) — A team project assignment with progress tracking.
@@ -46,7 +49,7 @@ godot --path /home/lars/Prosjekter/consultancy-tycoon --editor
 ### Personal Office (side-view)
 - **Main** (`src/main.tscn`) — Root scene. Scene switching between personal office and management office, HUD, timers.
 - **DeskScene** (`src/office/desk_scene.tscn`) — Side-view desk with clickable objects (monitor, phone, books, email, laptop, door).
-- **IDEInterface** (`src/ide/ide_interface.tscn`) — Fake IDE with code display, progress bar, review comments, merge conflict picker.
+- **IDEInterface** (`src/ide/ide_interface.tscn`) — Fake IDE with code display, progress bar, review comments, three-panel merge view (LOCAL|RESULT|REMOTE).
 - **BiddingPanel** (`src/ui/bidding_panel.tscn`) — Shows personal contract offers (tier 1-2) with bid chance and bid buttons.
 - **SkillPanel** (`src/ui/skill_panel.tscn`) — Skill purchase UI with dynamic pricing.
 - **HUD** (`src/ui/hud.tscn`) — Money, reputation, task info display. Listens to EventBus signals.
@@ -75,10 +78,11 @@ godot --headless -s addons/gut/gut_cmdln.gd
 # Config in .gutconfig.json
 ```
 
-Current test coverage: 155 tests across game state, coding task, coding loop, bidding system, skill system, consultant state, rentals, training, contract tiers, and save/load.
+Current test coverage: 176 tests across game state, coding task, coding loop, merge conflicts, bidding system, skill system, consultant state, rentals, training, contract tiers, and save/load.
 
 ## Game Design
 
 Full design document: `docs/plans/2026-02-11-game-design.md`
 Phase 1 implementation plan: `docs/plans/2026-02-11-phase1-mvp.md`
 Management rework design: `docs/plans/2026-02-12-management-rework-design.md`
+Merge conflict rework design: `docs/plans/2026-02-12-merge-rework-design.md`
