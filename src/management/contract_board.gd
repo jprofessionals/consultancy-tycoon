@@ -21,13 +21,7 @@ func _ready():
 	_build_ui()
 
 func _apply_panel_style():
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.12, 0.16)
-	style.set_content_margin_all(16)
-	style.set_corner_radius_all(8)
-	style.border_color = Color(0.3, 0.3, 0.35)
-	style.set_border_width_all(1)
-	add_theme_stylebox_override("panel", style)
+	add_theme_stylebox_override("panel", UITheme.create_panel_style())
 
 func _build_ui():
 	var vbox = VBoxContainer.new()
@@ -40,13 +34,11 @@ func _build_ui():
 
 	var title = Label.new()
 	title.text = "Contract Board"
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", UITheme.TITLE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var close_btn = Button.new()
-	close_btn.text = "X"
-	close_btn.custom_minimum_size = Vector2(32, 32)
+	var close_btn = UITheme.create_close_button()
 	close_btn.pressed.connect(func(): close_requested.emit())
 	header.add_child(close_btn)
 
@@ -122,7 +114,7 @@ func _build_project_cards():
 			team_rate, contract.task_count * team_rate
 		]
 		details.add_theme_font_size_override("font_size", 12)
-		details.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		details.add_theme_color_override("font_color", UITheme.TEXT_SECONDARY)
 		vbox.add_child(details)
 
 		# Skill requirements
@@ -176,7 +168,7 @@ func _build_rental_cards():
 			offer["rate_per_tick"], offer["duration"], est_total
 		]
 		details.add_theme_font_size_override("font_size", 12)
-		details.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		details.add_theme_color_override("font_color", UITheme.TEXT_SECONDARY)
 		vbox.add_child(details)
 
 		# Skill requirements
@@ -213,11 +205,7 @@ func _build_rental_cards():
 
 func _create_card_container() -> PanelContainer:
 	var card = PanelContainer.new()
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.16, 0.16, 0.2)
-	style.set_content_margin_all(10)
-	style.set_corner_radius_all(4)
-	card.add_theme_stylebox_override("panel", style)
+	card.add_theme_stylebox_override("panel", UITheme.create_card_style())
 	return card
 
 func _on_assign_consultant(consultant: ConsultantData, contract: ClientContract):

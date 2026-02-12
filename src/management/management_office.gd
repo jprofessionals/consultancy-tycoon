@@ -9,10 +9,13 @@ signal consultant_clicked(consultant: ConsultantData)
 
 # Layout constants
 const DESK_SIZE = Vector2(80, 60)
-const DESK_SPACING = Vector2(120, 100)
-const DESK_COLUMNS = 4
+const DESK_SPACING = Vector2(130, 120)
+const DESK_COLUMNS = 8
+const WALL_TOP = 50.0       # Below HUD overlay
 const WALL_HEIGHT = 60.0
-const DESK_AREA_TOP = 100.0
+const DESK_AREA_TOP = 190.0  # Room between wall and first desk row
+const MAX_DESKS = 24
+const DESK_BASE_COST = 500.0  # Cost multiplied by current capacity
 
 # Colors
 const FLOOR_COLOR = Color(0.22, 0.24, 0.26)
@@ -52,9 +55,13 @@ const CHAT_MESSAGES = [
 ]
 
 var _desk_nodes: Array = []
+var _desk_node_visuals: Array = []  # all desk-related nodes for rebuild
+var _buy_desk_btn: Button
 var _consultant_sprites: Array = []
 var _chat_timer: float = 0.0
 const CHAT_INTERVAL = 4.0
+var _back_door: ColorRect
+var _back_door_label: Label
 
 
 func _ready():
@@ -68,17 +75,17 @@ func _build_office():
 	floor_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(floor_bg)
 
-	# Wall strip at top
+	# Wall strip (below HUD)
 	var wall = ColorRect.new()
 	wall.color = WALL_COLOR
-	wall.position = Vector2(0, 0)
+	wall.position = Vector2(0, WALL_TOP)
 	wall.size = Vector2(1152, WALL_HEIGHT)
 	add_child(wall)
 
 	# Wall base molding
 	var molding = ColorRect.new()
 	molding.color = Color(0.3, 0.32, 0.35)
-	molding.position = Vector2(0, WALL_HEIGHT - 4)
+	molding.position = Vector2(0, WALL_TOP + WALL_HEIGHT - 4)
 	molding.size = Vector2(1152, 4)
 	add_child(molding)
 
@@ -90,7 +97,7 @@ func _build_office():
 
 
 func _build_wall_objects():
-	var wall_y = 5.0
+	var wall_y = WALL_TOP + 7.0
 	var obj_height = WALL_HEIGHT - 14.0
 	var spacing = 1152.0 / 6.0
 
@@ -99,6 +106,7 @@ func _build_wall_objects():
 		"Back to Desk", Vector2(spacing * 0.3, wall_y), Vector2(90, obj_height),
 		DOOR_COLOR, Color(0.85, 0.78, 0.65)
 	)
+	_back_door = door_ctrl
 	door_ctrl.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			back_to_desk_requested.emit()
@@ -110,6 +118,7 @@ func _build_wall_objects():
 	frame.position = door_ctrl.position - Vector2(4, 4)
 	frame.size = door_ctrl.size + Vector2(8, 8)
 	frame.z_index = -1
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(frame)
 
 	# Door handle
@@ -117,6 +126,7 @@ func _build_wall_objects():
 	handle.color = Color(0.75, 0.65, 0.30)
 	handle.position = Vector2(door_ctrl.position.x + 72, door_ctrl.position.y + obj_height * 0.5 - 4)
 	handle.size = Vector2(6, 12)
+	handle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(handle)
 
 	# 2) "Contracts" whiteboard (center-left)
@@ -135,6 +145,7 @@ func _build_wall_objects():
 	board_border.position = board_ctrl.position - Vector2(3, 3)
 	board_border.size = board_ctrl.size + Vector2(6, 6)
 	board_border.z_index = -1
+	board_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(board_border)
 
 	# 3) "Hiring" screen (center)
@@ -153,6 +164,7 @@ func _build_wall_objects():
 	screen_bezel.position = hire_ctrl.position - Vector2(3, 3)
 	screen_bezel.size = hire_ctrl.size + Vector2(6, 6)
 	screen_bezel.z_index = -1
+	screen_bezel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(screen_bezel)
 
 	# 4) "Staff" clipboard (center-right)
@@ -170,6 +182,7 @@ func _build_wall_objects():
 	clip.color = Color(0.6, 0.55, 0.45)
 	clip.position = Vector2(staff_ctrl.position.x + 25, staff_ctrl.position.y - 5)
 	clip.size = Vector2(30, 10)
+	clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(clip)
 
 	# 5) "Inbox" (right)
@@ -194,6 +207,7 @@ func _build_wall_objects():
 	lock_label.add_theme_font_size_override("font_size", 9)
 	lock_label.add_theme_color_override("font_color", Color(0.6, 0.5, 0.4))
 	lock_label.position = Vector2(locked_ctrl.position.x + 22, locked_ctrl.position.y + obj_height - 14)
+	lock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(lock_label)
 
 	# Locked door frame
@@ -202,11 +216,18 @@ func _build_wall_objects():
 	locked_frame.position = locked_ctrl.position - Vector2(4, 4)
 	locked_frame.size = locked_ctrl.size + Vector2(8, 8)
 	locked_frame.z_index = -1
+	locked_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(locked_frame)
 
 
 func _build_desks():
+	# Clear previous desk visuals
+	for node in _desk_node_visuals:
+		if is_instance_valid(node):
+			node.queue_free()
+	_desk_node_visuals.clear()
 	_desk_nodes.clear()
+
 	var desk_count: int = GameState.desk_capacity
 	var grid_start = Vector2(80, DESK_AREA_TOP)
 
@@ -221,6 +242,7 @@ func _build_desks():
 		shadow.position = pos + Vector2(4, 4)
 		shadow.size = DESK_SIZE
 		add_child(shadow)
+		_desk_node_visuals.append(shadow)
 
 		# Desk surface
 		var desk = ColorRect.new()
@@ -228,6 +250,7 @@ func _build_desks():
 		desk.position = pos
 		desk.size = DESK_SIZE
 		add_child(desk)
+		_desk_node_visuals.append(desk)
 
 		# Desk edge highlight
 		var edge = ColorRect.new()
@@ -235,6 +258,7 @@ func _build_desks():
 		edge.position = pos
 		edge.size = Vector2(DESK_SIZE.x, 3)
 		add_child(edge)
+		_desk_node_visuals.append(edge)
 
 		# Desk number label
 		var num_label = Label.new()
@@ -243,11 +267,57 @@ func _build_desks():
 		num_label.add_theme_color_override("font_color", Color(0.5, 0.45, 0.38))
 		num_label.position = pos + Vector2(3, DESK_SIZE.y - 16)
 		add_child(num_label)
+		_desk_node_visuals.append(num_label)
 
 		_desk_nodes.append({"rect": desk, "position": pos, "index": i})
 
+	# Buy Desk button (after last desk position)
+	if _buy_desk_btn and is_instance_valid(_buy_desk_btn):
+		_buy_desk_btn.queue_free()
+	_buy_desk_btn = null
+
+	if desk_count < MAX_DESKS:
+		var next_col = desk_count % DESK_COLUMNS
+		var next_row = desk_count / DESK_COLUMNS
+		var btn_pos = grid_start + Vector2(next_col * DESK_SPACING.x, next_row * DESK_SPACING.y)
+
+		_buy_desk_btn = Button.new()
+		_buy_desk_btn.custom_minimum_size = DESK_SIZE
+		_buy_desk_btn.position = btn_pos
+		_buy_desk_btn.size = DESK_SIZE
+		_update_buy_desk_label()
+		_buy_desk_btn.pressed.connect(_on_buy_desk)
+		add_child(_buy_desk_btn)
+
+
+func _get_desk_cost() -> float:
+	return DESK_BASE_COST * GameState.desk_capacity
+
+
+func _update_buy_desk_label():
+	if _buy_desk_btn:
+		_buy_desk_btn.text = "+ Desk\n$%.0f" % _get_desk_cost()
+		_buy_desk_btn.disabled = GameState.money < _get_desk_cost()
+
+
+func _on_buy_desk():
+	var cost = _get_desk_cost()
+	if not GameState.spend_money(cost):
+		return
+	GameState.desk_capacity += 1
+	_build_desks()
+	refresh()
+
+
+func set_desk_attention(attention: bool) -> void:
+	if _back_door:
+		_back_door.color = Color(0.7, 0.2, 0.2) if attention else DOOR_COLOR
+
 
 func refresh():
+	# Update buy desk button affordability
+	_update_buy_desk_label()
+
 	# Clear existing consultant sprites
 	for sprite_data in _consultant_sprites:
 		if is_instance_valid(sprite_data["node"]):
@@ -283,10 +353,14 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 	container.size = Vector2(30, 60)
 	add_child(container)
 
-	# Head (colored circle approximation as ColorRect)
-	var head = ColorRect.new()
-	head.color = _get_consultant_color(consultant)
+	# Head (rounded to circle)
+	var head = PanelContainer.new()
+	var head_style = StyleBoxFlat.new()
+	head_style.bg_color = _get_consultant_color(consultant)
+	head_style.set_corner_radius_all(15)
+	head.add_theme_stylebox_override("panel", head_style)
 	head.position = Vector2(0, 0)
+	head.custom_minimum_size = Vector2(30, 30)
 	head.size = Vector2(30, 30)
 	head.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	container.add_child(head)
@@ -378,35 +452,36 @@ func _spawn_chat_bubble():
 
 	var message = CHAT_MESSAGES[randi() % CHAT_MESSAGES.size()]
 
-	# Create chat bubble
+	# Create chat bubble with rounded background
+	var bubble_panel = PanelContainer.new()
+	var bubble_style = StyleBoxFlat.new()
+	bubble_style.bg_color = Color(0.2, 0.22, 0.28, 0.9)
+	bubble_style.set_corner_radius_all(6)
+	bubble_style.border_color = Color(0.3, 0.32, 0.38, 0.6)
+	bubble_style.set_border_width_all(1)
+	bubble_style.content_margin_left = 8
+	bubble_style.content_margin_right = 8
+	bubble_style.content_margin_top = 3
+	bubble_style.content_margin_bottom = 3
+	bubble_panel.add_theme_stylebox_override("panel", bubble_style)
+	bubble_panel.position = Vector2(30, -30)
+	bubble_panel.z_index = 10
+
 	var bubble = Label.new()
 	bubble.text = message
 	bubble.add_theme_font_size_override("font_size", 10)
 	bubble.add_theme_color_override("font_color", Color(0.95, 0.95, 0.9))
-	bubble.position = Vector2(35, -25)
+	bubble_panel.add_child(bubble)
 
-	# Bubble background using a panel-like approach via a ColorRect behind the label
-	var bubble_bg = ColorRect.new()
-	bubble_bg.color = Color(0.2, 0.22, 0.28, 0.9)
-	bubble_bg.position = Vector2(30, -30)
-	bubble_bg.size = Vector2(message.length() * 6.5 + 16, 22)
-	bubble_bg.z_index = 10
-
-	bubble.z_index = 11
-
-	sprite_node.add_child(bubble_bg)
-	sprite_node.add_child(bubble)
+	sprite_node.add_child(bubble_panel)
 
 	# Tween: wait 2.5s, fade out over 0.5s, then remove
 	var tween = create_tween()
 	tween.tween_interval(2.5)
-	tween.tween_property(bubble, "modulate:a", 0.0, 0.5)
-	tween.parallel().tween_property(bubble_bg, "modulate:a", 0.0, 0.5)
+	tween.tween_property(bubble_panel, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(func():
-		if is_instance_valid(bubble):
-			bubble.queue_free()
-		if is_instance_valid(bubble_bg):
-			bubble_bg.queue_free()
+		if is_instance_valid(bubble_panel):
+			bubble_panel.queue_free()
 	)
 
 
@@ -418,10 +493,16 @@ func _create_interactive_object(label_text: String, pos: Vector2, obj_size: Vect
 	bg.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	add_child(bg)
 
+	# Hover feedback — lighten on enter, restore on exit
+	var base_color = bg_color
+	bg.mouse_entered.connect(func(): bg.color = base_color.lightened(0.15))
+	bg.mouse_exited.connect(func(): bg.color = base_color)
+
 	var label = Label.new()
 	label.text = label_text
 	label.add_theme_font_size_override("font_size", 12)
 	label.add_theme_color_override("font_color", text_color)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# Center text in the object
 	label.position = pos + Vector2(
 		(obj_size.x - label_text.length() * 7.0) * 0.5,

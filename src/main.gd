@@ -4,7 +4,7 @@ enum DeskState { DESK, ZOOMED_TO_MONITOR, OVERLAY_OPEN }
 
 var state: DeskState = DeskState.DESK
 var desk_scene: Control
-var hud: HBoxContainer
+var hud: PanelContainer
 var ide: PanelContainer
 var bidding_panel: PanelContainer
 var skill_panel: PanelContainer
@@ -101,6 +101,11 @@ func _process(delta: float):
 		_pending_extensions.append(rental)
 		EventBus.rental_extension_available.emit(rental)
 
+	# Update desk attention indicator in management view
+	if _in_management:
+		var has_attention = desk_scene.phone_glow.visible or event_manager.get_unread_count() > 0 or ide.get_stuck_count() > 0
+		management_office.set_desk_attention(has_attention)
+
 	# Management issue generation
 	if not GameState.consultants.is_empty():
 		var issue = consultant_manager.try_generate_issue(GameState)
@@ -128,15 +133,9 @@ func _build_hud_layer():
 	hud_layer.layer = 10
 	add_child(hud_layer)
 
-	var margin = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 8)
-	hud_layer.add_child(margin)
-
 	hud = load("res://src/ui/hud.tscn").instantiate()
-	margin.add_child(hud)
+	hud.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	hud_layer.add_child(hud)
 
 func _build_ide_layer():
 	ide_layer = CanvasLayer.new()
@@ -664,10 +663,14 @@ func _work_personally(contract: ClientContract, diff_mod: float):
 	tab.difficulty_modifier = diff_mod
 	ide.add_tab(tab)
 	_update_click_power()
-	_hide_overlay()
 
-	# Auto-zoom to monitor after accepting contract
-	if state == DeskState.DESK:
+	var has_ai = GameState.ai_tools.get("auto_writer", 0) > 0
+	var all_tabs_full = ide.tabs.size() >= tab_limit
+	if not has_ai or all_tabs_full:
+		_hide_overlay()
+
+	# Auto-zoom to monitor after accepting contract (skip if AI has free tabs)
+	if state == DeskState.DESK and (not has_ai or all_tabs_full):
 		_on_monitor_clicked()
 
 	# Wait for zoom to finish, then start first task on this tab
@@ -744,14 +747,12 @@ func _on_management_assign(consultant: ConsultantData, contract: ClientContract)
 	consultant.location = ConsultantData.Location.ON_PROJECT
 	consultant.training_skill = ""
 	consultant_manager.create_assignment(contract, [consultant], GameState)
-	_hide_management_overlay()
 	management_office.refresh()
 
 func _on_management_rental(consultant: ConsultantData, offer: Dictionary):
 	consultant_manager.place_on_rental(
 		consultant, offer["client_name"], offer["rate_per_tick"], offer["duration"], GameState
 	)
-	_hide_management_overlay()
 	management_office.refresh()
 
 func _on_fire_consultant(consultant: ConsultantData):

@@ -11,34 +11,27 @@ func _ready():
 	_build_ui()
 
 func _build_ui():
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	add_child(margin)
+	add_theme_stylebox_override("panel", UITheme.create_panel_style())
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	margin.add_child(vbox)
+	vbox.add_theme_constant_override("separation", UITheme.NORMAL)
+	add_child(vbox)
 
 	var header = HBoxContainer.new()
 	vbox.add_child(header)
 
 	var title = Label.new()
 	title.text = "Available Contracts"
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", UITheme.TITLE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var close_btn = Button.new()
-	close_btn.text = "X"
-	close_btn.custom_minimum_size = Vector2(32, 32)
+	var close_btn = UITheme.create_close_button()
 	close_btn.pressed.connect(func(): close_requested.emit())
 	header.add_child(close_btn)
 
 	contract_list = VBoxContainer.new()
-	contract_list.add_theme_constant_override("separation", 4)
+	contract_list.add_theme_constant_override("separation", UITheme.TIGHT)
 	vbox.add_child(contract_list)
 
 func refresh_contracts():
@@ -55,8 +48,10 @@ func _display_contracts():
 
 func _create_contract_card(contract: ClientContract) -> PanelContainer:
 	var card = PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UITheme.create_card_style())
+
 	var hbox = HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 12)
+	hbox.add_theme_constant_override("separation", UITheme.RELAXED)
 	card.add_child(hbox)
 
 	var info = VBoxContainer.new()
@@ -65,6 +60,7 @@ func _create_contract_card(contract: ClientContract) -> PanelContainer:
 
 	var name_label = Label.new()
 	name_label.text = "%s — %s" % [contract.client_name, contract.project_description]
+	name_label.add_theme_font_size_override("font_size", UITheme.BODY)
 	info.add_child(name_label)
 
 	var details_label = Label.new()
@@ -74,16 +70,19 @@ func _create_contract_card(contract: ClientContract) -> PanelContainer:
 		tier_names[contract.tier], contract.task_count,
 		contract.payout_per_task, skills_text
 	]
-	details_label.add_theme_font_size_override("font_size", 12)
+	details_label.add_theme_font_size_override("font_size", UITheme.SMALL)
+	details_label.add_theme_color_override("font_color", UITheme.TEXT_SECONDARY)
 	info.add_child(details_label)
 
 	var bid_chance = bidding_system.calculate_bid_chance(contract, GameState.skills)
 	var chance_label = Label.new()
 	chance_label.text = "%.0f%% chance" % (bid_chance * 100)
+	chance_label.add_theme_font_size_override("font_size", UITheme.SMALL)
 	hbox.add_child(chance_label)
 
 	var bid_btn = Button.new()
 	bid_btn.text = "Bid"
+	UITheme.style_button(bid_btn)
 	bid_btn.pressed.connect(func(): _on_bid(contract))
 	hbox.add_child(bid_btn)
 

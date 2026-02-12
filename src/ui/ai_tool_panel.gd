@@ -11,45 +11,29 @@ func _ready():
 
 func _build_ui():
 	custom_minimum_size = Vector2(520, 400)
-
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.12, 0.14, 0.18)
-	style.set_content_margin_all(16)
-	style.set_corner_radius_all(8)
-	style.border_color = Color(0.25, 0.35, 0.55)
-	style.set_border_width_all(1)
-	add_theme_stylebox_override("panel", style)
-
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 12)
-	margin.add_theme_constant_override("margin_bottom", 12)
-	add_child(margin)
+	add_theme_stylebox_override("panel", UITheme.create_panel_style())
 
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	margin.add_child(vbox)
+	vbox.add_theme_constant_override("separation", UITheme.NORMAL)
+	add_child(vbox)
 
 	var header = HBoxContainer.new()
 	vbox.add_child(header)
 
 	var title = Label.new()
 	title.text = "AI Development Tools"
-	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_font_size_override("font_size", UITheme.TITLE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
-	var close_btn = Button.new()
-	close_btn.text = "X"
-	close_btn.custom_minimum_size = Vector2(32, 32)
+	var close_btn = UITheme.create_close_button()
 	close_btn.pressed.connect(func(): close_requested.emit())
 	header.add_child(close_btn)
 
 	var desc = Label.new()
 	desc.text = "AI tools automate parts of your coding workflow. Higher tiers are faster and more reliable."
-	desc.add_theme_font_size_override("font_size", 12)
-	desc.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	desc.add_theme_font_size_override("font_size", UITheme.SMALL)
+	desc.add_theme_color_override("font_color", UITheme.TEXT_MUTED)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(desc)
 
@@ -67,11 +51,7 @@ func refresh():
 
 func _create_tool_row(tool: AiToolData) -> PanelContainer:
 	var card = PanelContainer.new()
-	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = Color(0.16, 0.18, 0.22)
-	card_style.set_content_margin_all(10)
-	card_style.set_corner_radius_all(4)
-	card.add_theme_stylebox_override("panel", card_style)
+	card.add_theme_stylebox_override("panel", UITheme.create_card_style())
 
 	var hbox = HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 12)
@@ -91,7 +71,7 @@ func _create_tool_row(tool: AiToolData) -> PanelContainer:
 	var desc_label = Label.new()
 	desc_label.text = tool.description
 	desc_label.add_theme_font_size_override("font_size", 12)
-	desc_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	desc_label.add_theme_color_override("font_color", UITheme.TEXT_MUTED)
 	info.add_child(desc_label)
 
 	if current_tier > 0:
