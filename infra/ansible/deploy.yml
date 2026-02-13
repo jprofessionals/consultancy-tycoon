@@ -1,0 +1,36 @@
+---
+- name: Deploy Consultancy Tycoon to dev VM
+  hosts: devserver
+  vars_files:
+    - "{{ ansible_controll_vars | default('../../ansible-controll/inventory/group_vars/all.yml') }}"
+  vars:
+    app_name: consultancy-tycoon
+    app_dir: "/home/{{ deploy_user }}/tycoon.{{ domain | default('jpro.dev') }}"
+    app_domain: "tycoon.{{ domain | default('jpro.dev') }}"
+
+  tasks:
+    - name: Ensure app directory exists
+      ansible.builtin.file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
+        mode: "0755"
+
+    - name: Write Caddy site config
+      ansible.builtin.copy:
+        dest: "/etc/caddy/sites/{{ app_name }}.caddy"
+        content: |
+          {{ app_domain }} {
+              root * {{ app_dir }}
+              file_server
+              header {
+                  Cross-Origin-Opener-Policy same-origin
+                  Cross-Origin-Embedder-Policy require-corp
+              }
+          }
+        mode: "0644"
+
+    - name: Reload Caddy
+      ansible.builtin.shell: sudo systemctl reload caddy
+      changed_when: true

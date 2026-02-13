@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -24,3 +24,68 @@ jobs:
 
       - name: Run tests
         run: godot --headless -s addons/gut/gut_cmdln.gd
+
+  deploy:
+    name: Deploy to Dev VM
+    needs: [test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: jprofessionals/ansible-dev-vm-controll
+          path: ansible-controll
+          ssh-key: ${{ secrets.ANSIBLE_CONTROLL_DEPLOY_KEY }}
+
+      - name: Install Godot 4.6
+        run: |
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+          unzip -q Godot_v4.6-stable_linux.x86_64.zip
+          mv Godot_v4.6-stable_linux.x86_64 /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+
+      - name: Install Godot export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates/4.6.stable
+          wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_export_templates.tpz
+          unzip -q Godot_v4.6-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.6.stable/
+
+      - name: Import project
+        run: godot --headless --import
+
+      - name: Build web export
+        run: |
+          mkdir -p build
+          godot --headless --export-release "Web" build/index.html
+
+      - name: Install Ansible
+        run: pip install ansible
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H ${{ vars.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Set up Vault password
+        run: echo "${{ secrets.VAULT_PASSWORD }}" > .vault_password
+
+      - name: Upload build to VM
+        run: |
+          rsync -az --delete build/ deploy@${{ vars.VM_HOST }}:/home/deploy/tycoon.jpro.dev/
+
+      - name: Run deploy playbook
+        working-directory: infra/ansible
+        run: >
+          ansible-playbook deploy.yml
+          --vault-password-file ../../.vault_password
+          -e ansible_controll_vars=../../ansible-controll/inventory/group_vars/all.yml
+        env:
+          VM_HOST: ${{ vars.VM_HOST }}
