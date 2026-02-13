@@ -48,6 +48,7 @@ var stand_up_btn: Button
 var contract_offer_timer: Timer
 var event_timer: Timer
 var salary_timer: Timer
+var autosave_timer: Timer
 
 # Management issues queue (flows through email panel)
 var _pending_issues: Array = []
@@ -379,6 +380,12 @@ func _setup_timers():
 	salary_timer.timeout.connect(_on_salary_timer)
 	add_child(salary_timer)
 
+	autosave_timer = Timer.new()
+	autosave_timer.wait_time = 60.0
+	autosave_timer.autostart = false
+	autosave_timer.timeout.connect(_on_autosave)
+	add_child(autosave_timer)
+
 # ── Game Start ──
 
 func _on_start_game(load_save: bool = false):
@@ -394,6 +401,7 @@ func _on_start_game(load_save: bool = false):
 	contract_offer_timer.start()
 	event_timer.start()
 	salary_timer.start()
+	autosave_timer.start()
 	# Update HUD after load
 	hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
 	_update_ai_status()
@@ -519,7 +527,7 @@ func _open_pause_menu():
 	var quit_btn = Button.new()
 	quit_btn.text = "Quit"
 	quit_btn.custom_minimum_size = Vector2(200, 40)
-	quit_btn.pressed.connect(func(): get_tree().quit())
+	quit_btn.pressed.connect(_on_quit_pressed)
 	vbox.add_child(quit_btn)
 
 func _close_pause_menu():
@@ -527,6 +535,57 @@ func _close_pause_menu():
 		pause_layer.queue_free()
 		pause_layer = null
 	_pause_open = false
+
+func _on_autosave():
+	if not _game_started:
+		return
+	var runtime = _collect_runtime_state()
+	SaveManager.save_game(runtime)
+
+func _notification(what: int):
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if _game_started:
+			var runtime = _collect_runtime_state()
+			SaveManager.save_game(runtime)
+
+func _on_quit_pressed():
+	# Save before quitting
+	var runtime = _collect_runtime_state()
+	SaveManager.save_game(runtime)
+	_close_pause_menu()
+	if OS.has_feature("web"):
+		_return_to_welcome()
+	else:
+		get_tree().quit()
+
+func _return_to_welcome():
+	_game_started = false
+	autosave_timer.stop()
+	contract_offer_timer.stop()
+	event_timer.stop()
+	salary_timer.stop()
+
+	# Reset view state
+	if state == DeskState.ZOOMED_TO_MONITOR:
+		ide_layer.visible = false
+	if state == DeskState.OVERLAY_OPEN:
+		overlay_layer.visible = false
+		if _current_overlay:
+			_current_overlay.visible = false
+		_current_overlay = null
+	state = DeskState.DESK
+	desk_scene.scale = Vector2.ONE
+	desk_scene.position = Vector2.ZERO
+	desk_scene.visible = true
+
+	# Hide management
+	if _in_management:
+		management_layer.visible = false
+		management_overlay_layer.visible = false
+		_in_management = false
+
+	# Rebuild welcome screen
+	_build_welcome_layer()
 
 func _on_save_pressed():
 	var runtime = _collect_runtime_state()

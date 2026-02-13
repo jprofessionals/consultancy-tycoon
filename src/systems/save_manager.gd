@@ -14,6 +14,7 @@ func save_game(runtime_state: Dictionary, game_state: Node = null) -> bool:
 		return false
 	file.store_string(json_string)
 	file.close()
+	_sync_web_fs()
 	return true
 
 func load_game() -> Dictionary:
@@ -42,6 +43,11 @@ func has_save() -> bool:
 func delete_save() -> void:
 	if FileAccess.file_exists(save_path):
 		DirAccess.remove_absolute(save_path)
+		_sync_web_fs()
+
+func _sync_web_fs() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("if(window.Module&&Module.FS&&Module.FS.syncfs)Module.FS.syncfs(false,function(e){if(e)console.error('syncfs:',e)});")
 
 # ── Build Save Dictionary ──
 
