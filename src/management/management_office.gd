@@ -8,23 +8,24 @@ signal inbox_clicked
 signal consultant_clicked(consultant: ConsultantData)
 
 # Layout constants
-const DESK_SIZE = Vector2(80, 60)
-const MAX_DESKS = 24
+const MAX_DESKS = 18
 const DESK_BASE_COST = 500.0  # Cost multiplied by current capacity
 
-# Isometric tile dimensions (from floorFull_SE.png)
-const TILE_W = 208.0
-const HALF_W = 104.0
-const TILE_H = 152.0
-const HALF_H = 76.0
-const GRID_COLS = 8
+# Isometric scale (0.5 = half native size so the grid fits the viewport)
+const ISO_SCALE = 0.5
+const TILE_W = 208.0 * ISO_SCALE   # 104
+const HALF_W = 104.0 * ISO_SCALE   # 52
+const TILE_H = 152.0 * ISO_SCALE   # 76
+const HALF_H = 76.0 * ISO_SCALE    # 38
+const GRID_COLS = 6
 const GRID_ROWS = 4
-const GRID_ORIGIN = Vector2(368, 40)
+const GRID_ORIGIN = Vector2(472, 158)
 
 # Preloaded isometric textures (used in _build_desks which runs on purchase)
 const DESK_TEX = preload("res://assets/kenney-furniture/isometric/desk_SE.png")
 const CHAIR_TEX = preload("res://assets/kenney-furniture/isometric/chairDesk_SE.png")
 const MONITOR_TEX = preload("res://assets/kenney-furniture/isometric/computerScreen_SE.png")
+const FURNITURE_SCALE = 0.7  # Scale down desk items to leave room between desks
 
 # Chat bubble messages
 const CHAT_MESSAGES = [
@@ -167,6 +168,20 @@ func _cart_to_iso(col: int, row: int, origin: Vector2) -> Vector2:
 	)
 
 
+func _make_iso_sprite(texture: Texture2D, pos: Vector2, extra_scale: float = 1.0) -> TextureRect:
+	var tex_rect = TextureRect.new()
+	tex_rect.texture = texture
+	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var s = ISO_SCALE * extra_scale
+	var w = texture.get_width() * s
+	var h = texture.get_height() * s
+	tex_rect.custom_minimum_size = Vector2(w, h)
+	tex_rect.size = Vector2(w, h)
+	tex_rect.position = pos
+	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tex_rect
+
+
 func _ready():
 	_back_door = %BackDoor
 	_back_door_label = %BackDoorLabel
@@ -225,37 +240,31 @@ func _build_desks():
 		var row = 1 + i / GRID_COLS  # Row 0 is the wall, desks start at row 1
 		var iso_pos = _cart_to_iso(col, row, origin)
 
-		# Chair (behind desk, z_index -1)
-		var chair = TextureRect.new()
-		chair.texture = CHAIR_TEX
-		chair.position = iso_pos + Vector2(75, -10)
+		# Chair (behind desk, z_index -1) — scaled down, flipped to match grid
+		var chair = _make_iso_sprite(CHAIR_TEX, iso_pos + Vector2(38, 2), FURNITURE_SCALE)
+		chair.flip_h = true
 		chair.z_index = -1
-		chair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(chair)
 		_desk_node_visuals.append(chair)
 
-		# Desk surface
-		var desk = TextureRect.new()
-		desk.texture = DESK_TEX
-		desk.position = iso_pos + Vector2(45, 20)
-		desk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Desk surface — scaled down, flipped
+		var desk = _make_iso_sprite(DESK_TEX, iso_pos + Vector2(26, 15), FURNITURE_SCALE)
+		desk.flip_h = true
 		add_child(desk)
 		_desk_node_visuals.append(desk)
 
-		# Monitor on desk
-		var monitor = TextureRect.new()
-		monitor.texture = MONITOR_TEX
-		monitor.position = iso_pos + Vector2(70, -10)
-		monitor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Monitor on desk — scaled down, flipped
+		var monitor = _make_iso_sprite(MONITOR_TEX, iso_pos + Vector2(38, 2), FURNITURE_SCALE)
+		monitor.flip_h = true
 		add_child(monitor)
 		_desk_node_visuals.append(monitor)
 
 		# Desk number label
 		var num_label = Label.new()
 		num_label.text = str(i + 1)
-		num_label.add_theme_font_size_override("font_size", 10)
+		num_label.add_theme_font_size_override("font_size", 9)
 		num_label.add_theme_color_override("font_color", Color(0.5, 0.45, 0.38))
-		num_label.position = iso_pos + Vector2(90, 50)
+		num_label.position = iso_pos + Vector2(42, 30)
 		num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(num_label)
 		_desk_node_visuals.append(num_label)
@@ -273,9 +282,10 @@ func _build_desks():
 		var btn_iso = _cart_to_iso(next_col, next_row, origin)
 
 		_buy_desk_btn = Button.new()
-		_buy_desk_btn.custom_minimum_size = DESK_SIZE
-		_buy_desk_btn.position = btn_iso + Vector2(45, 20)
-		_buy_desk_btn.size = DESK_SIZE
+		var btn_size = Vector2(55, 35)
+		_buy_desk_btn.custom_minimum_size = btn_size
+		_buy_desk_btn.position = btn_iso + Vector2(26, 15)
+		_buy_desk_btn.size = btn_size
 		_update_buy_desk_label()
 		_buy_desk_btn.pressed.connect(_on_buy_desk)
 		add_child(_buy_desk_btn)
@@ -287,6 +297,7 @@ func _get_desk_cost() -> float:
 
 func _update_buy_desk_label():
 	if _buy_desk_btn:
+		_buy_desk_btn.add_theme_font_size_override("font_size", 10)
 		_buy_desk_btn.text = "+ Desk\n$%.0f" % _get_desk_cost()
 		_buy_desk_btn.disabled = GameState.money < _get_desk_cost()
 
@@ -350,19 +361,19 @@ func refresh():
 
 func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _desk_index: int):
 	var container = Control.new()
-	container.position = desk_pos + Vector2(80, -40)
-	container.size = Vector2(30, 60)
+	container.position = desk_pos + Vector2(40, -18)
+	container.size = Vector2(25, 50)
 	add_child(container)
 
 	# Head (rounded to circle)
 	var head = PanelContainer.new()
 	var head_style = StyleBoxFlat.new()
 	head_style.bg_color = _get_consultant_color(consultant)
-	head_style.set_corner_radius_all(15)
+	head_style.set_corner_radius_all(11)
 	head.add_theme_stylebox_override("panel", head_style)
 	head.position = Vector2(0, 0)
-	head.custom_minimum_size = Vector2(30, 30)
-	head.size = Vector2(30, 30)
+	head.custom_minimum_size = Vector2(22, 22)
+	head.size = Vector2(22, 22)
 	head.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	container.add_child(head)
 
@@ -376,9 +387,9 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 	var name_label = Label.new()
 	var first_name = consultant.name.split(" ")[0] if " " in consultant.name else consultant.name
 	name_label.text = first_name
-	name_label.add_theme_font_size_override("font_size", 10)
+	name_label.add_theme_font_size_override("font_size", 9)
 	name_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
-	name_label.position = Vector2(-5, 32)
+	name_label.position = Vector2(-5, 24)
 	container.add_child(name_label)
 
 	# State label
@@ -389,8 +400,8 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 	else:
 		state_label.text = "Idle"
 		state_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-	state_label.add_theme_font_size_override("font_size", 9)
-	state_label.position = Vector2(-5, 44)
+	state_label.add_theme_font_size_override("font_size", 8)
+	state_label.position = Vector2(-5, 35)
 	container.add_child(state_label)
 
 	_consultant_sprites.append({"node": container, "consultant": consultant})
@@ -398,8 +409,8 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 
 func _create_away_label(consultant: ConsultantData, desk_pos: Vector2):
 	var container = Control.new()
-	container.position = desk_pos + Vector2(50, 10)
-	container.size = Vector2(DESK_SIZE.x, 20)
+	container.position = desk_pos + Vector2(28, 12)
+	container.size = Vector2(60, 16)
 	add_child(container)
 
 	var label = Label.new()
