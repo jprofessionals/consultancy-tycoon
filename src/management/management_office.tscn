@@ -1,10 +1,453 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://jm7p5661p2cn"]
 
-[ext_resource type="Script" path="res://src/management/management_office.gd" id="1"]
+[ext_resource type="Script" uid="uid://dcujbpcv8e5tf" path="res://src/management/management_office.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://ck4ptbomocae0" path="res://assets/kenney-furniture/isometric/floorFull_SE.png" id="2"]
+[ext_resource type="Texture2D" uid="uid://cayo4xctalwkl" path="res://assets/kenney-furniture/isometric/wall_SE.png" id="3"]
+[ext_resource type="Texture2D" uid="uid://ctvf7ghjvk1gh" path="res://assets/kenney-furniture/isometric/wallDoorway_SE.png" id="4"]
+[ext_resource type="Texture2D" uid="uid://px1k8ufrdujr" path="res://assets/kenney-furniture/isometric/bookcaseOpen_SE.png" id="5"]
+[ext_resource type="Texture2D" uid="uid://c4vsooteowhlq" path="res://assets/kenney-furniture/isometric/pottedPlant_SE.png" id="6"]
 
-[node name="ManagementOffice" type="Control"]
+[node name="ManagementOffice" type="Control" unique_id=1148131605]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="." unique_id=1819756366]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="WallC1" type="TextureRect" parent="." unique_id=1775578885]
+visible = false
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 579.0
+offset_top = 102.0
+offset_right = 688.0
+offset_bottom = 314.0
+mouse_filter = 2
+texture = ExtResource("3")
+stretch_mode = 5
+flip_h = true
+
+[node name="WallC2" type="TextureRect" parent="." unique_id=1585859843]
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 580.0
+offset_top = 114.0
+offset_right = 732.0
+offset_bottom = 341.0
+mouse_filter = 2
+texture = ExtResource("3")
+stretch_mode = 5
+flip_h = true
+
+[node name="WallC3" type="TextureRect" parent="." unique_id=1951699275]
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 683.0
+offset_top = 178.0
+offset_right = 792.0
+offset_bottom = 390.0
+mouse_filter = 2
+texture = ExtResource("3")
+stretch_mode = 5
+flip_h = true
+
+[node name="WallC4" type="TextureRect" parent="." unique_id=1770748633]
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 735.0
+offset_top = 216.0
+offset_right = 844.0
+offset_bottom = 428.0
+mouse_filter = 2
+texture = ExtResource("3")
+stretch_mode = 5
+flip_h = true
+
+[node name="WallC5" type="TextureRect" parent="." unique_id=1756905772]
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 787.0
+offset_top = 254.0
+offset_right = 896.0
+offset_bottom = 466.0
+mouse_filter = 2
+texture = ExtResource("3")
+stretch_mode = 5
+flip_h = true
+
+[node name="BackDoor" type="TextureRect" parent="." unique_id=978256429]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 527.0
+offset_top = 64.0
+offset_right = 636.0
+offset_bottom = 276.0
+mouse_filter = 0
+mouse_default_cursor_shape = 2
+texture = ExtResource("4")
+stretch_mode = 5
+flip_h = true
+
+[node name="BackDoorLabel" type="Label" parent="." unique_id=835515086]
+unique_name_in_owner = true
+z_index = 2
+layout_mode = 0
+offset_left = 492.0
+offset_top = 85.0
+offset_right = 592.0
+offset_bottom = 99.0
+theme_override_colors/font_color = Color(0.85, 0.78, 0.65, 1)
+theme_override_font_sizes/font_size = 10
+text = "Back to Desk"
+
+[node name="Bookcase" type="TextureRect" parent="." unique_id=115080391]
+visible = false
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 787.0
+offset_top = 254.0
+offset_right = 896.0
+offset_bottom = 466.0
+mouse_filter = 2
+texture = ExtResource("5")
+stretch_mode = 5
+flip_h = true
+
+[node name="Plant" type="TextureRect" parent="." unique_id=1795543762]
+visible = false
+custom_minimum_size = Vector2(109, 212)
+layout_mode = 0
+offset_left = 735.0
+offset_top = 216.0
+offset_right = 844.0
+offset_bottom = 428.0
+mouse_filter = 2
+texture = ExtResource("6")
+stretch_mode = 5
+
+[node name="FloorR1C0" type="TextureRect" parent="." unique_id=1417784065]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 420.0
+offset_top = 196.0
+offset_right = 524.0
+offset_bottom = 272.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR1C1" type="TextureRect" parent="." unique_id=62524358]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 472.0
+offset_top = 234.0
+offset_right = 576.0
+offset_bottom = 310.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR1C2" type="TextureRect" parent="." unique_id=2026196830]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 524.0
+offset_top = 272.0
+offset_right = 628.0
+offset_bottom = 348.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR1C3" type="TextureRect" parent="." unique_id=1288734656]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 576.0
+offset_top = 310.0
+offset_right = 680.0
+offset_bottom = 386.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR1C4" type="TextureRect" parent="." unique_id=1351393067]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 628.0
+offset_top = 348.0
+offset_right = 732.0
+offset_bottom = 424.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR1C5" type="TextureRect" parent="." unique_id=484554719]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 680.0
+offset_top = 386.0
+offset_right = 784.0
+offset_bottom = 462.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR2C0" type="TextureRect" parent="." unique_id=2003542467]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 368.0
+offset_top = 234.0
+offset_right = 472.0
+offset_bottom = 310.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR2C1" type="TextureRect" parent="." unique_id=412148026]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 420.0
+offset_top = 272.0
+offset_right = 524.0
+offset_bottom = 348.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR2C2" type="TextureRect" parent="." unique_id=2060539927]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 472.0
+offset_top = 310.0
+offset_right = 576.0
+offset_bottom = 386.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR2C3" type="TextureRect" parent="." unique_id=1957243219]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 524.0
+offset_top = 348.0
+offset_right = 628.0
+offset_bottom = 424.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR2C4" type="TextureRect" parent="." unique_id=1401336511]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 576.0
+offset_top = 386.0
+offset_right = 680.0
+offset_bottom = 462.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR2C5" type="TextureRect" parent="." unique_id=136948805]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 628.0
+offset_top = 424.0
+offset_right = 732.0
+offset_bottom = 500.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR3C0" type="TextureRect" parent="." unique_id=711598839]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 316.0
+offset_top = 272.0
+offset_right = 420.0
+offset_bottom = 348.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR3C1" type="TextureRect" parent="." unique_id=1049466594]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 368.0
+offset_top = 310.0
+offset_right = 472.0
+offset_bottom = 386.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR3C2" type="TextureRect" parent="." unique_id=639955724]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 420.0
+offset_top = 348.0
+offset_right = 524.0
+offset_bottom = 424.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR3C3" type="TextureRect" parent="." unique_id=1123451583]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 472.0
+offset_top = 386.0
+offset_right = 576.0
+offset_bottom = 462.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR3C4" type="TextureRect" parent="." unique_id=1292707856]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 524.0
+offset_top = 424.0
+offset_right = 628.0
+offset_bottom = 500.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="FloorR3C5" type="TextureRect" parent="." unique_id=111613313]
+custom_minimum_size = Vector2(104, 76)
+layout_mode = 0
+offset_left = 576.0
+offset_top = 462.0
+offset_right = 680.0
+offset_bottom = 538.0
+mouse_filter = 2
+texture = ExtResource("2")
+stretch_mode = 5
+
+[node name="ContractsObj" type="ColorRect" parent="." unique_id=1956574245]
+unique_name_in_owner = true
+z_index = 1
+layout_mode = 0
+offset_left = 661.0
+offset_top = 190.0
+offset_right = 711.0
+offset_bottom = 218.0
+mouse_default_cursor_shape = 2
+color = Color(0.85, 0.87, 0.85, 1)
+
+[node name="ContractsLabel" type="Label" parent="." unique_id=242775931]
+z_index = 1
+layout_mode = 0
+offset_left = 655.0
+offset_top = 197.0
+offset_right = 718.0
+offset_bottom = 211.0
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 12
+text = "Contracts"
+
+[node name="HiringObj" type="ColorRect" parent="." unique_id=1245806008]
+unique_name_in_owner = true
+z_index = 1
+layout_mode = 0
+offset_left = 713.0
+offset_top = 228.0
+offset_right = 763.0
+offset_bottom = 256.0
+mouse_default_cursor_shape = 2
+color = Color(0.12, 0.15, 0.22, 1)
+
+[node name="HiringLabel" type="Label" parent="." unique_id=1186828942]
+z_index = 1
+layout_mode = 0
+offset_left = 717.0
+offset_top = 235.0
+offset_right = 759.0
+offset_bottom = 249.0
+theme_override_colors/font_color = Color(0.4, 0.7, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "Hiring"
+
+[node name="StaffObj" type="ColorRect" parent="." unique_id=1594011576]
+unique_name_in_owner = true
+z_index = 1
+layout_mode = 0
+offset_left = 765.0
+offset_top = 266.0
+offset_right = 815.0
+offset_bottom = 294.0
+mouse_default_cursor_shape = 2
+color = Color(0.55, 0.45, 0.3, 1)
+
+[node name="StaffLabel" type="Label" parent="." unique_id=1251863837]
+z_index = 1
+layout_mode = 0
+offset_left = 773.0
+offset_top = 273.0
+offset_right = 808.0
+offset_bottom = 287.0
+theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
+theme_override_font_sizes/font_size = 12
+text = "Staff"
+
+[node name="InboxObj" type="ColorRect" parent="." unique_id=199466542]
+unique_name_in_owner = true
+z_index = 1
+layout_mode = 0
+offset_left = 817.0
+offset_top = 304.0
+offset_right = 867.0
+offset_bottom = 332.0
+mouse_default_cursor_shape = 2
+color = Color(0.3, 0.35, 0.45, 1)
+
+[node name="InboxLabel" type="Label" parent="." unique_id=25749643]
+z_index = 1
+layout_mode = 0
+offset_left = 825.0
+offset_top = 311.0
+offset_right = 860.0
+offset_bottom = 325.0
+theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "Inbox"
+
+[node name="TeamsObj" type="ColorRect" parent="." unique_id=1389988803]
+unique_name_in_owner = true
+z_index = 1
+layout_mode = 0
+offset_left = 869.0
+offset_top = 342.0
+offset_right = 919.0
+offset_bottom = 370.0
+color = Color(0.3, 0.28, 0.25, 1)
+
+[node name="TeamsLabel" type="Label" parent="." unique_id=1705857520]
+z_index = 1
+layout_mode = 0
+offset_left = 877.0
+offset_top = 349.0
+offset_right = 912.0
+offset_bottom = 363.0
+theme_override_colors/font_color = Color(0.5, 0.48, 0.45, 1)
+theme_override_font_sizes/font_size = 12
+text = "Teams"
+
+[node name="TeamsLockedLabel" type="Label" parent="." unique_id=1385116400]
+z_index = 2
+layout_mode = 0
+offset_left = 883.0
+offset_top = 364.0
+offset_right = 923.0
+offset_bottom = 375.0
+theme_override_colors/font_color = Color(0.6, 0.5, 0.4, 1)
+theme_override_font_sizes/font_size = 8
+text = "Locked"

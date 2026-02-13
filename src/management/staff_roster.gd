@@ -8,53 +8,14 @@ signal set_remote(consultant: ConsultantData, remote: bool)
 
 const COMMON_SKILLS = ["javascript", "python", "devops", "frameworks", "coding_speed", "code_quality"]
 
-var _scroll_container: ScrollContainer
-var _card_list: VBoxContainer
-var _summary_label: Label
+@onready var _card_list: VBoxContainer = %CardList
+@onready var _summary_label: Label = %SummaryLabel
+@onready var _close_btn: Button = %CloseBtn
 
 func _ready():
-	custom_minimum_size = Vector2(650, 500)
-	_apply_panel_style()
-	_build_ui()
-
-func _apply_panel_style():
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-func _build_ui():
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	add_child(vbox)
-
-	# Header
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "Staff Roster"
-	title.add_theme_font_size_override("font_size", UITheme.TITLE)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	# Summary
-	_summary_label = Label.new()
-	_summary_label.add_theme_font_size_override("font_size", 13)
-	_summary_label.add_theme_color_override("font_color", UITheme.TEXT_SECONDARY)
-	vbox.add_child(_summary_label)
-
-	# Scroll area
-	_scroll_container = ScrollContainer.new()
-	_scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(_scroll_container)
-
-	_card_list = VBoxContainer.new()
-	_card_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_card_list.add_theme_constant_override("separation", 6)
-	_scroll_container.add_child(_card_list)
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
 
 func refresh():
 	_update_summary()

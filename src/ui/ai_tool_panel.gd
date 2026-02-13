@@ -1,45 +1,17 @@
 extends PanelContainer
 
 var ai_tool_manager: AiToolManager = AiToolManager.new()
-var tool_list: VBoxContainer
+
+@onready var tool_list: VBoxContainer = %ToolList
+@onready var _close_btn: Button = %CloseBtn
 
 signal close_requested
 
 func _ready():
-	_build_ui()
-	refresh()
-
-func _build_ui():
-	custom_minimum_size = Vector2(520, 400)
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UITheme.NORMAL)
-	add_child(vbox)
-
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "AI Development Tools"
-	title.add_theme_font_size_override("font_size", UITheme.TITLE)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	var desc = Label.new()
-	desc.text = "AI tools automate parts of your coding workflow. Higher tiers are faster and more reliable."
-	desc.add_theme_font_size_override("font_size", UITheme.SMALL)
-	desc.add_theme_color_override("font_color", UITheme.TEXT_MUTED)
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vbox.add_child(desc)
-
-	tool_list = VBoxContainer.new()
-	tool_list.add_theme_constant_override("separation", 6)
-	vbox.add_child(tool_list)
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
+	refresh()
 
 func refresh():
 	for child in tool_list.get_children():

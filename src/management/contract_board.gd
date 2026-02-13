@@ -10,63 +10,17 @@ var contracts: Array = []
 var rental_offers: Array = []
 var current_tab: String = "projects"
 
-var _scroll_container: ScrollContainer
-var _card_list: VBoxContainer
-var _projects_btn: Button
-var _rentals_btn: Button
+@onready var _card_list: VBoxContainer = %CardList
+@onready var _projects_btn: Button = %ProjectsBtn
+@onready var _rentals_btn: Button = %RentalsBtn
+@onready var _close_btn: Button = %CloseBtn
 
 func _ready():
-	custom_minimum_size = Vector2(700, 500)
-	_apply_panel_style()
-	_build_ui()
-
-func _apply_panel_style():
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-func _build_ui():
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	add_child(vbox)
-
-	# Header
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "Contract Board"
-	title.add_theme_font_size_override("font_size", UITheme.TITLE)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	# Tab buttons
-	var tab_row = HBoxContainer.new()
-	tab_row.add_theme_constant_override("separation", 4)
-	vbox.add_child(tab_row)
-
-	_projects_btn = Button.new()
-	_projects_btn.text = "Projects"
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
 	_projects_btn.pressed.connect(func(): _switch_tab("projects"))
-	tab_row.add_child(_projects_btn)
-
-	_rentals_btn = Button.new()
-	_rentals_btn.text = "Rentals"
 	_rentals_btn.pressed.connect(func(): _switch_tab("rentals"))
-	tab_row.add_child(_rentals_btn)
-
-	# Scroll area
-	_scroll_container = ScrollContainer.new()
-	_scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(_scroll_container)
-
-	_card_list = VBoxContainer.new()
-	_card_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_card_list.add_theme_constant_override("separation", 6)
-	_scroll_container.add_child(_card_list)
 
 func _switch_tab(tab: String):
 	current_tab = tab

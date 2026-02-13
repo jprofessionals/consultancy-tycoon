@@ -8,40 +8,24 @@ signal inbox_clicked
 signal consultant_clicked(consultant: ConsultantData)
 
 # Layout constants
-const DESK_SIZE = Vector2(80, 60)
-const DESK_SPACING = Vector2(130, 120)
-const DESK_COLUMNS = 8
-const WALL_TOP = 50.0       # Below HUD overlay
-const WALL_HEIGHT = 60.0
-const DESK_AREA_TOP = 190.0  # Room between wall and first desk row
-const MAX_DESKS = 24
+const MAX_DESKS = 18
 const DESK_BASE_COST = 500.0  # Cost multiplied by current capacity
 
-# Isometric tile dimensions (from floorFull_SE.png)
-const TILE_W = 208.0
-const HALF_W = 104.0
-const TILE_H = 152.0
-const HALF_H = 76.0
-const GRID_COLS = 8
+# Isometric scale (0.5 = half native size so the grid fits the viewport)
+const ISO_SCALE = 0.5
+const TILE_W = 208.0 * ISO_SCALE   # 104
+const HALF_W = 104.0 * ISO_SCALE   # 52
+const TILE_H = 152.0 * ISO_SCALE   # 76
+const HALF_H = 76.0 * ISO_SCALE    # 38
+const GRID_COLS = 6
 const GRID_ROWS = 4
+const GRID_ORIGIN = Vector2(472, 158)
 
 # Preloaded isometric textures (used in _build_desks which runs on purchase)
 const DESK_TEX = preload("res://assets/kenney-furniture/isometric/desk_SE.png")
 const CHAIR_TEX = preload("res://assets/kenney-furniture/isometric/chairDesk_SE.png")
 const MONITOR_TEX = preload("res://assets/kenney-furniture/isometric/computerScreen_SE.png")
-
-# Colors
-const FLOOR_COLOR = Color(0.22, 0.24, 0.26)
-const WALL_COLOR = Color(0.25, 0.27, 0.3)
-const DESK_COLOR = Color(0.35, 0.3, 0.25)
-const DOOR_COLOR = Color(0.45, 0.33, 0.22)
-const DOOR_FRAME_COLOR = Color(0.35, 0.25, 0.18)
-const WHITEBOARD_COLOR = Color(0.85, 0.87, 0.85)
-const SCREEN_COLOR = Color(0.12, 0.15, 0.22)
-const CLIPBOARD_COLOR = Color(0.55, 0.45, 0.3)
-const INBOX_COLOR = Color(0.3, 0.35, 0.45)
-const LOCKED_DOOR_COLOR = Color(0.3, 0.28, 0.25)
-const OBJECT_LABEL_COLOR = Color(0.15, 0.15, 0.15)
+const FURNITURE_SCALE = 0.7  # Scale down desk items to leave room between desks
 
 # Chat bubble messages
 const CHAT_MESSAGES = [
@@ -177,13 +161,6 @@ var _back_door: TextureRect
 var _back_door_label: Label
 
 
-const REF_W = 1152.0
-const REF_H = 648.0
-
-func _get_vp() -> Vector2:
-	return get_viewport_rect().size if is_inside_tree() else Vector2(REF_W, REF_H)
-
-
 func _cart_to_iso(col: int, row: int, origin: Vector2) -> Vector2:
 	return Vector2(
 		origin.x + (col - row) * HALF_W,
@@ -191,171 +168,60 @@ func _cart_to_iso(col: int, row: int, origin: Vector2) -> Vector2:
 	)
 
 
-func _get_grid_origin(vp: Vector2) -> Vector2:
-	var grid_pixel_w = (GRID_COLS + GRID_ROWS) * HALF_W
-	return Vector2(
-		(vp.x - grid_pixel_w) / 2.0 + GRID_ROWS * HALF_W,
-		40.0
-	)
+func _make_iso_sprite(texture: Texture2D, pos: Vector2, extra_scale: float = 1.0) -> TextureRect:
+	var tex_rect = TextureRect.new()
+	tex_rect.texture = texture
+	tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	var s = ISO_SCALE * extra_scale
+	var w = texture.get_width() * s
+	var h = texture.get_height() * s
+	tex_rect.custom_minimum_size = Vector2(w, h)
+	tex_rect.size = Vector2(w, h)
+	tex_rect.position = pos
+	tex_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tex_rect
 
 
 func _ready():
-	_build_office()
+	_back_door = %BackDoor
+	_back_door_label = %BackDoorLabel
 
-
-func _build_office():
-	# Dark background
-	var bg = ColorRect.new()
-	bg.color = Color(0.1, 0.1, 0.12)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-
-	var vp = _get_vp()
-	var origin = _get_grid_origin(vp)
-
-	# Floor tiles
-	var floor_tex = load("res://assets/kenney-furniture/isometric/floorFull_SE.png")
-	for row in GRID_ROWS:
-		for col in GRID_COLS:
-			var iso_pos = _cart_to_iso(col, row, origin)
-			var tile = TextureRect.new()
-			tile.texture = floor_tex
-			tile.position = iso_pos
-			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			add_child(tile)
-
-	# Back wall along row 0 (skip col 0 — doorway goes there)
-	var wall_tex = load("res://assets/kenney-furniture/isometric/wall_SE.png")
-	for col in range(1, GRID_COLS):
-		var iso_pos = _cart_to_iso(col, 0, origin)
-		var wall_sprite = TextureRect.new()
-		wall_sprite.texture = wall_tex
-		# Wall sits on top of the floor tile, offset vertically
-		wall_sprite.position = iso_pos + Vector2(50, -110)
-		wall_sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(wall_sprite)
-
-	# === DECORATIONS ===
-	var bookcase_tex = load("res://assets/kenney-furniture/isometric/bookcaseOpen_SE.png")
-	var bookcase = TextureRect.new()
-	bookcase.texture = bookcase_tex
-	bookcase.position = _cart_to_iso(GRID_COLS - 1, 0, origin) + Vector2(60, -100)
-	bookcase.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bookcase)
-
-	var plant_tex = load("res://assets/kenney-furniture/isometric/pottedPlant_SE.png")
-	var plant = TextureRect.new()
-	plant.texture = plant_tex
-	plant.position = _cart_to_iso(GRID_COLS - 2, 0, origin) + Vector2(80, -60)
-	plant.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(plant)
-
-	# === WALL OBJECTS ===
-	_build_wall_objects()
-
-	# === DESKS ===
-	_build_desks()
-
-
-func _build_wall_objects():
-	var vp = _get_vp()
-	var origin = _get_grid_origin(vp)
-	# Wall object vertical offset to sit on the wall above the floor
-	var wall_obj_y_offset = -90.0
-
-	# 1) "Back to Desk" door (col 0) — Kenney doorway sprite
-	var door_iso = _cart_to_iso(0, 0, origin)
-	var door_tex = load("res://assets/kenney-furniture/isometric/wallDoorway_SE.png")
-	var door_sprite = TextureRect.new()
-	door_sprite.texture = door_tex
-	door_sprite.position = door_iso + Vector2(50, -110)
-	door_sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	door_sprite.mouse_filter = Control.MOUSE_FILTER_STOP
-	door_sprite.z_index = 1
-	add_child(door_sprite)
-	_back_door = door_sprite
-
-	# Door label
-	var door_label = Label.new()
-	door_label.text = "Back to Desk"
-	door_label.add_theme_font_size_override("font_size", 11)
-	door_label.add_theme_color_override("font_color", Color(0.85, 0.78, 0.65))
-	door_label.position = door_iso + Vector2(45, -120)
-	door_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	door_label.z_index = 2
-	add_child(door_label)
-	_back_door_label = door_label
-
-	door_sprite.gui_input.connect(func(event: InputEvent):
+	# Connect door click
+	_back_door.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			back_to_desk_requested.emit()
 	)
 
-	# 2) "Contracts" (col 2)
-	var contracts_iso = _cart_to_iso(2, 0, origin)
-	var board_ctrl = _create_interactive_object(
-		"Contracts", contracts_iso + Vector2(55, wall_obj_y_offset), Vector2(100, 46),
-		WHITEBOARD_COLOR, OBJECT_LABEL_COLOR
-	)
-	board_ctrl.z_index = 1
-	board_ctrl.gui_input.connect(func(event: InputEvent):
+	# Connect wall object clicks
+	%ContractsObj.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			contract_board_clicked.emit()
 	)
-
-	# 3) "Hiring" (col 3)
-	var hiring_iso = _cart_to_iso(3, 0, origin)
-	var hire_ctrl = _create_interactive_object(
-		"Hiring", hiring_iso + Vector2(55, wall_obj_y_offset), Vector2(100, 46),
-		SCREEN_COLOR, Color(0.4, 0.7, 0.9)
-	)
-	hire_ctrl.z_index = 1
-	hire_ctrl.gui_input.connect(func(event: InputEvent):
+	%HiringObj.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			hiring_board_clicked.emit()
 	)
-
-	# 4) "Staff" (col 5)
-	var staff_iso = _cart_to_iso(5, 0, origin)
-	var staff_ctrl = _create_interactive_object(
-		"Staff", staff_iso + Vector2(55, wall_obj_y_offset), Vector2(80, 46),
-		CLIPBOARD_COLOR, Color(0.9, 0.85, 0.75)
-	)
-	staff_ctrl.z_index = 1
-	staff_ctrl.gui_input.connect(func(event: InputEvent):
+	%StaffObj.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			staff_roster_clicked.emit()
 	)
-
-	# 5) "Inbox" (col 6)
-	var inbox_iso = _cart_to_iso(6, 0, origin)
-	var inbox_ctrl = _create_interactive_object(
-		"Inbox", inbox_iso + Vector2(55, wall_obj_y_offset), Vector2(80, 46),
-		INBOX_COLOR, Color(0.7, 0.8, 0.95)
-	)
-	inbox_ctrl.z_index = 1
-	inbox_ctrl.gui_input.connect(func(event: InputEvent):
+	%InboxObj.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			inbox_clicked.emit()
 	)
 
-	# 6) Locked "Teams" (col 7)
-	var teams_iso = _cart_to_iso(7, 0, origin)
-	var locked_ctrl = _create_interactive_object(
-		"Teams", teams_iso + Vector2(55, wall_obj_y_offset), Vector2(90, 46),
-		LOCKED_DOOR_COLOR, Color(0.5, 0.48, 0.45)
-	)
-	locked_ctrl.z_index = 1
+	# Wall object hover effects
+	_setup_hover(%ContractsObj, Color(0.85, 0.87, 0.85))
+	_setup_hover(%HiringObj, Color(0.12, 0.15, 0.22))
+	_setup_hover(%StaffObj, Color(0.55, 0.45, 0.3))
+	_setup_hover(%InboxObj, Color(0.3, 0.35, 0.45))
 
-	# Lock icon label
-	var lock_label = Label.new()
-	lock_label.text = "Locked"
-	lock_label.add_theme_font_size_override("font_size", 9)
-	lock_label.add_theme_color_override("font_color", Color(0.6, 0.5, 0.4))
-	lock_label.position = Vector2(locked_ctrl.position.x + 22, locked_ctrl.position.y + 32)
-	lock_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	lock_label.z_index = 2
-	add_child(lock_label)
+	_build_desks()
+
+
+func _setup_hover(obj: ColorRect, base_color: Color):
+	obj.mouse_entered.connect(func(): obj.color = base_color.lightened(0.15))
+	obj.mouse_exited.connect(func(): obj.color = base_color)
 
 
 func _build_desks():
@@ -367,45 +233,38 @@ func _build_desks():
 	_desk_nodes.clear()
 
 	var desk_count: int = GameState.desk_capacity
-	var vp = _get_vp()
-	var origin = _get_grid_origin(vp)
+	var origin = GRID_ORIGIN
 
 	for i in desk_count:
 		var col = i % GRID_COLS
 		var row = 1 + i / GRID_COLS  # Row 0 is the wall, desks start at row 1
 		var iso_pos = _cart_to_iso(col, row, origin)
 
-		# Chair (behind desk, z_index -1)
-		var chair = TextureRect.new()
-		chair.texture = CHAIR_TEX
-		chair.position = iso_pos + Vector2(75, -10)
+		# Chair (behind desk, z_index -1) — scaled down, flipped to match grid
+		var chair = _make_iso_sprite(CHAIR_TEX, iso_pos + Vector2(38, 2), FURNITURE_SCALE)
+		chair.flip_h = true
 		chair.z_index = -1
-		chair.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(chair)
 		_desk_node_visuals.append(chair)
 
-		# Desk surface
-		var desk = TextureRect.new()
-		desk.texture = DESK_TEX
-		desk.position = iso_pos + Vector2(45, 20)
-		desk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Desk surface — scaled down, flipped
+		var desk = _make_iso_sprite(DESK_TEX, iso_pos + Vector2(26, 15), FURNITURE_SCALE)
+		desk.flip_h = true
 		add_child(desk)
 		_desk_node_visuals.append(desk)
 
-		# Monitor on desk
-		var monitor = TextureRect.new()
-		monitor.texture = MONITOR_TEX
-		monitor.position = iso_pos + Vector2(70, -10)
-		monitor.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Monitor on desk — scaled down, flipped
+		var monitor = _make_iso_sprite(MONITOR_TEX, iso_pos + Vector2(38, 2), FURNITURE_SCALE)
+		monitor.flip_h = true
 		add_child(monitor)
 		_desk_node_visuals.append(monitor)
 
 		# Desk number label
 		var num_label = Label.new()
 		num_label.text = str(i + 1)
-		num_label.add_theme_font_size_override("font_size", 10)
+		num_label.add_theme_font_size_override("font_size", 9)
 		num_label.add_theme_color_override("font_color", Color(0.5, 0.45, 0.38))
-		num_label.position = iso_pos + Vector2(90, 50)
+		num_label.position = iso_pos + Vector2(42, 30)
 		num_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(num_label)
 		_desk_node_visuals.append(num_label)
@@ -423,9 +282,10 @@ func _build_desks():
 		var btn_iso = _cart_to_iso(next_col, next_row, origin)
 
 		_buy_desk_btn = Button.new()
-		_buy_desk_btn.custom_minimum_size = DESK_SIZE
-		_buy_desk_btn.position = btn_iso + Vector2(45, 20)
-		_buy_desk_btn.size = DESK_SIZE
+		var btn_size = Vector2(55, 35)
+		_buy_desk_btn.custom_minimum_size = btn_size
+		_buy_desk_btn.position = btn_iso + Vector2(26, 15)
+		_buy_desk_btn.size = btn_size
 		_update_buy_desk_label()
 		_buy_desk_btn.pressed.connect(_on_buy_desk)
 		add_child(_buy_desk_btn)
@@ -437,6 +297,7 @@ func _get_desk_cost() -> float:
 
 func _update_buy_desk_label():
 	if _buy_desk_btn:
+		_buy_desk_btn.add_theme_font_size_override("font_size", 10)
 		_buy_desk_btn.text = "+ Desk\n$%.0f" % _get_desk_cost()
 		_buy_desk_btn.disabled = GameState.money < _get_desk_cost()
 
@@ -500,19 +361,19 @@ func refresh():
 
 func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _desk_index: int):
 	var container = Control.new()
-	container.position = desk_pos + Vector2(80, -40)
-	container.size = Vector2(30, 60)
+	container.position = desk_pos + Vector2(40, -18)
+	container.size = Vector2(25, 50)
 	add_child(container)
 
 	# Head (rounded to circle)
 	var head = PanelContainer.new()
 	var head_style = StyleBoxFlat.new()
 	head_style.bg_color = _get_consultant_color(consultant)
-	head_style.set_corner_radius_all(15)
+	head_style.set_corner_radius_all(11)
 	head.add_theme_stylebox_override("panel", head_style)
 	head.position = Vector2(0, 0)
-	head.custom_minimum_size = Vector2(30, 30)
-	head.size = Vector2(30, 30)
+	head.custom_minimum_size = Vector2(22, 22)
+	head.size = Vector2(22, 22)
 	head.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	container.add_child(head)
 
@@ -526,9 +387,9 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 	var name_label = Label.new()
 	var first_name = consultant.name.split(" ")[0] if " " in consultant.name else consultant.name
 	name_label.text = first_name
-	name_label.add_theme_font_size_override("font_size", 10)
+	name_label.add_theme_font_size_override("font_size", 9)
 	name_label.add_theme_color_override("font_color", Color(0.8, 0.85, 0.9))
-	name_label.position = Vector2(-5, 32)
+	name_label.position = Vector2(-5, 24)
 	container.add_child(name_label)
 
 	# State label
@@ -539,8 +400,8 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 	else:
 		state_label.text = "Idle"
 		state_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
-	state_label.add_theme_font_size_override("font_size", 9)
-	state_label.position = Vector2(-5, 44)
+	state_label.add_theme_font_size_override("font_size", 8)
+	state_label.position = Vector2(-5, 35)
 	container.add_child(state_label)
 
 	_consultant_sprites.append({"node": container, "consultant": consultant})
@@ -548,8 +409,8 @@ func _create_consultant_sprite(consultant: ConsultantData, desk_pos: Vector2, _d
 
 func _create_away_label(consultant: ConsultantData, desk_pos: Vector2):
 	var container = Control.new()
-	container.position = desk_pos + Vector2(50, 10)
-	container.size = Vector2(DESK_SIZE.x, 20)
+	container.position = desk_pos + Vector2(28, 12)
+	container.size = Vector2(60, 16)
 	add_child(container)
 
 	var label = Label.new()
@@ -634,31 +495,3 @@ func _spawn_chat_bubble():
 		if is_instance_valid(bubble_panel):
 			bubble_panel.queue_free()
 	)
-
-
-func _create_interactive_object(label_text: String, pos: Vector2, obj_size: Vector2, bg_color: Color, text_color: Color) -> ColorRect:
-	var bg = ColorRect.new()
-	bg.color = bg_color
-	bg.position = pos
-	bg.size = obj_size
-	bg.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	add_child(bg)
-
-	# Hover feedback — lighten on enter, restore on exit
-	var base_color = bg_color
-	bg.mouse_entered.connect(func(): bg.color = base_color.lightened(0.15))
-	bg.mouse_exited.connect(func(): bg.color = base_color)
-
-	var label = Label.new()
-	label.text = label_text
-	label.add_theme_font_size_override("font_size", 12)
-	label.add_theme_color_override("font_color", text_color)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	# Center text in the object
-	label.position = pos + Vector2(
-		(obj_size.x - label_text.length() * 7.0) * 0.5,
-		(obj_size.y - 14) * 0.5
-	)
-	add_child(label)
-
-	return bg

@@ -3,50 +3,14 @@ extends PanelContainer
 signal close_requested
 signal choice_made(event: RandomEvent, choice_index: int)
 
-var event_list: VBoxContainer
-var no_mail_label: Label
+@onready var event_list: VBoxContainer = %EventList
+@onready var no_mail_label: Label = %NoMailLabel
+@onready var _close_btn: Button = %CloseBtn
 
 func _ready():
-	_build_ui()
-
-func _build_ui():
-	custom_minimum_size = Vector2(500, 400)
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UITheme.RELAXED)
-	add_child(vbox)
-
-	# Header
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "Inbox"
-	title.add_theme_font_size_override("font_size", 20)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	# Scrollable event list
-	var scroll = ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(scroll)
-
-	event_list = VBoxContainer.new()
-	event_list.add_theme_constant_override("separation", 8)
-	event_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(event_list)
-
-	# Empty state
-	no_mail_label = Label.new()
-	no_mail_label.text = "No new messages."
-	no_mail_label.add_theme_color_override("font_color", UITheme.TEXT_MUTED)
-	no_mail_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	event_list.add_child(no_mail_label)
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
 
 func display_events(events: Array):
 	for child in event_list.get_children():
