@@ -2,37 +2,17 @@ extends PanelContainer
 
 var bidding_system: BiddingSystem = BiddingSystem.new()
 var active_contracts: Array[ClientContract] = []
-var contract_list: VBoxContainer
+
+@onready var contract_list: VBoxContainer = %ContractList
+@onready var _close_btn: Button = %CloseBtn
 
 signal contract_accepted(contract: ClientContract, difficulty_modifier: float)
 signal close_requested
 
 func _ready():
-	_build_ui()
-
-func _build_ui():
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UITheme.NORMAL)
-	add_child(vbox)
-
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "Available Contracts"
-	title.add_theme_font_size_override("font_size", UITheme.TITLE)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	contract_list = VBoxContainer.new()
-	contract_list.add_theme_constant_override("separation", UITheme.TIGHT)
-	vbox.add_child(contract_list)
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
 
 func refresh_contracts():
 	active_contracts = bidding_system.generate_contracts(3, GameState.reputation)
