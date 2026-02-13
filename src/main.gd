@@ -303,6 +303,18 @@ func _build_welcome_layer():
 	start_btn.pressed.connect(_on_start_game.bind(false))
 	content.add_child(start_btn)
 
+	var dev_btn = Button.new()
+	dev_btn.text = "Dev Save"
+	dev_btn.custom_minimum_size = Vector2(200, 40)
+	dev_btn.add_theme_font_size_override("font_size", 14)
+	dev_btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	dev_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	dev_btn.pressed.connect(func():
+		SaveManager.create_test_save()
+		_on_start_game(true)
+	)
+	content.add_child(dev_btn)
+
 func _connect_signals():
 	bidding_panel.contract_accepted.connect(_on_contract_accepted)
 	bidding_panel.close_requested.connect(_hide_overlay)
