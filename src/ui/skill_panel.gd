@@ -1,37 +1,17 @@
 extends PanelContainer
 
 var skill_manager: SkillManager = SkillManager.new()
-var skill_list: VBoxContainer
+
+@onready var skill_list: VBoxContainer = %SkillList
+@onready var _close_btn: Button = %CloseBtn
 
 signal close_requested
 
 func _ready():
-	_build_ui()
-	refresh()
-
-func _build_ui():
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UITheme.NORMAL)
-	add_child(vbox)
-
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "Skills & Certifications"
-	title.add_theme_font_size_override("font_size", UITheme.TITLE)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	skill_list = VBoxContainer.new()
-	skill_list.add_theme_constant_override("separation", UITheme.TIGHT)
-	vbox.add_child(skill_list)
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
+	refresh()
 
 func refresh():
 	for child in skill_list.get_children():
