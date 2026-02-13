@@ -7,53 +7,15 @@ signal issue_choice_made(issue: ManagementIssue, choice_index: int)
 var _extensions: Array = []
 var _issues: Array = []
 
-var _scroll_container: ScrollContainer
-var _card_list: VBoxContainer
-var _empty_label: Label
+@onready var _card_list: VBoxContainer = %CardList
+@onready var _empty_label: Label = %EmptyLabel
+@onready var _close_btn: Button = %CloseBtn
+@onready var _scroll_container: ScrollContainer = %Scroll
 
 func _ready():
-	custom_minimum_size = Vector2(550, 400)
-	_apply_panel_style()
-	_build_ui()
-
-func _apply_panel_style():
 	add_theme_stylebox_override("panel", UITheme.create_panel_style())
-
-func _build_ui():
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	add_child(vbox)
-
-	# Header
-	var header = HBoxContainer.new()
-	vbox.add_child(header)
-
-	var title = Label.new()
-	title.text = "Management Inbox"
-	title.add_theme_font_size_override("font_size", UITheme.TITLE)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var close_btn = UITheme.create_close_button()
-	close_btn.pressed.connect(func(): close_requested.emit())
-	header.add_child(close_btn)
-
-	# Empty label
-	_empty_label = Label.new()
-	_empty_label.text = "No notifications"
-	_empty_label.add_theme_color_override("font_color", UITheme.TEXT_MUTED)
-	vbox.add_child(_empty_label)
-
-	# Scroll area
-	_scroll_container = ScrollContainer.new()
-	_scroll_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	vbox.add_child(_scroll_container)
-
-	_card_list = VBoxContainer.new()
-	_card_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_card_list.add_theme_constant_override("separation", 6)
-	_scroll_container.add_child(_card_list)
+	UITheme.style_button(_close_btn)
+	_close_btn.pressed.connect(func(): close_requested.emit())
 
 func set_notifications(extensions: Array, issues: Array):
 	_extensions = extensions
