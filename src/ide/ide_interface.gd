@@ -15,24 +15,24 @@ var coding_loop: CodingLoop:
 # Fallback loop for when no tabs exist
 var _idle_loop: CodingLoop = CodingLoop.new()
 
-@onready var code_display: RichTextLabel
-@onready var progress_bar: ProgressBar
-@onready var status_label: Label
-@onready var task_label: Label
-@onready var review_panel: VBoxContainer
-@onready var conflict_panel: HBoxContainer
-@onready var notification_area: PanelContainer
-@onready var keyboard_panel: PanelContainer
-var _tab_bar: HBoxContainer
-var _tab_bar_container: PanelContainer
-var _merge_view: VBoxContainer
-var _merge_local_display: RichTextLabel
-var _merge_result_display: RichTextLabel
-var _merge_remote_display: RichTextLabel
-var _merge_btn_automerge: Button
-var _merge_btn_local: Button
-var _merge_btn_remote: Button
-var _merge_btn_both: Button
+@onready var code_display: RichTextLabel = %CodeDisplay
+@onready var progress_bar: ProgressBar = %Progress
+@onready var status_label: Label = %StatusLabel
+@onready var task_label: Label = %TaskLabel
+@onready var review_panel: VBoxContainer = %ReviewPanel
+@onready var conflict_panel: HBoxContainer = %ConflictPanel
+@onready var notification_area: PanelContainer = %NotificationArea
+@onready var keyboard_panel: PanelContainer = %KeyboardPanel
+@onready var _tab_bar: HBoxContainer = %TabBar
+@onready var _tab_bar_container: PanelContainer = %TabBarContainer
+@onready var _merge_view: VBoxContainer = %MergeView
+@onready var _merge_local_display: RichTextLabel = %MergeLocalDisplay
+@onready var _merge_result_display: RichTextLabel = %MergeResultDisplay
+@onready var _merge_remote_display: RichTextLabel = %MergeRemoteDisplay
+@onready var _merge_btn_automerge: Button = %MergeBtnAutomerge
+@onready var _merge_btn_local: Button = %MergeBtnLocal
+@onready var _merge_btn_remote: Button = %MergeBtnRemote
+@onready var _merge_btn_both: Button = %MergeBtnBoth
 
 var _key_buttons: Array[Button] = []
 var _key_buttons_by_label: Dictionary = {}
@@ -154,8 +154,13 @@ const REVIEW_CHANGES = [
 ]
 
 func _ready():
-	_build_ui()
+	_setup_keyboard()
 	_connect_signals()
+	keyboard_panel.gui_input.connect(_on_keyboard_panel_input)
+	_merge_btn_automerge.pressed.connect(_on_merge_btn_automerge)
+	_merge_btn_local.pressed.connect(_resolve_current_chunk.bind("local"))
+	_merge_btn_remote.pressed.connect(_resolve_current_chunk.bind("remote"))
+	_merge_btn_both.pressed.connect(_resolve_current_chunk.bind("both"))
 
 func _process(_delta: float):
 	if tabs.size() <= 1:
@@ -282,230 +287,17 @@ func _flash_key_by_label(label: String):
 		if not _key_buttons.is_empty():
 			_flash_key(_key_buttons[randi() % _key_buttons.size()])
 
-func _build_ui():
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 16)
-	margin.add_theme_constant_override("margin_right", 16)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_bottom", 16)
-	add_child(margin)
-
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 8)
-	margin.add_child(vbox)
-
-	# Title bar
-	var title_bar = HBoxContainer.new()
-	vbox.add_child(title_bar)
-	var title = Label.new()
-	title.text = "  CONSULTANCY IDE v1.0"
-	title.add_theme_font_size_override("font_size", 14)
-	title_bar.add_child(title)
-
-	# Tab bar (hidden when <= 1 tab)
-	_tab_bar_container = PanelContainer.new()
-	_tab_bar_container.visible = false
-	var tab_style = StyleBoxFlat.new()
-	tab_style.bg_color = Color(0.12, 0.12, 0.15)
-	tab_style.set_content_margin_all(4)
-	tab_style.set_corner_radius_all(3)
-	_tab_bar_container.add_theme_stylebox_override("panel", tab_style)
-	vbox.add_child(_tab_bar_container)
-
-	_tab_bar = HBoxContainer.new()
-	_tab_bar.add_theme_constant_override("separation", 4)
-	_tab_bar_container.add_child(_tab_bar)
-
-	# Task label
-	task_label = Label.new()
-	task_label.text = "No active task"
-	vbox.add_child(task_label)
-
-	# Status
-	status_label = Label.new()
-	status_label.text = "IDLE"
-	vbox.add_child(status_label)
-
-	# Notification area (review/conflict — above code, away from keyboard)
-	notification_area = PanelContainer.new()
-	notification_area.visible = false
-	var notif_style = StyleBoxFlat.new()
-	notif_style.bg_color = Color(0.2, 0.22, 0.25)
-	notif_style.set_content_margin_all(8)
-	notif_style.set_corner_radius_all(4)
-	notification_area.add_theme_stylebox_override("panel", notif_style)
-	vbox.add_child(notification_area)
-
-	var notif_vbox = VBoxContainer.new()
-	notif_vbox.add_theme_constant_override("separation", 6)
-	notification_area.add_child(notif_vbox)
-
-	# Review panel (inside notification area)
-	review_panel = VBoxContainer.new()
-	review_panel.visible = false
-	notif_vbox.add_child(review_panel)
-
-	# Conflict panel (inside notification area)
-	conflict_panel = HBoxContainer.new()
-	conflict_panel.visible = false
-	notif_vbox.add_child(conflict_panel)
-
-	# Code display
-	code_display = RichTextLabel.new()
-	code_display.bbcode_enabled = true
-	code_display.custom_minimum_size = Vector2(0, 200)
-	code_display.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	code_display.add_theme_color_override("default_color", Color(0.85, 0.85, 0.85))
-	vbox.add_child(code_display)
-
-	# Merge view (replaces code_display during conflicts)
-	_merge_view = VBoxContainer.new()
-	_merge_view.visible = false
-	_merge_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_merge_view.add_theme_constant_override("separation", 4)
-	vbox.add_child(_merge_view)
-
-	var merge_columns = HBoxContainer.new()
-	merge_columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	merge_columns.add_theme_constant_override("separation", 4)
-	_merge_view.add_child(merge_columns)
-
-	var local_col = _build_merge_column("LOCAL")
-	merge_columns.add_child(local_col[0])
-	_merge_local_display = local_col[1]
-
-	var result_col = _build_merge_column("RESULT")
-	merge_columns.add_child(result_col[0])
-	_merge_result_display = result_col[1]
-
-	var remote_col = _build_merge_column("REMOTE")
-	merge_columns.add_child(remote_col[0])
-	_merge_remote_display = remote_col[1]
-
-	# Merge action buttons
-	var merge_btn_bar = HBoxContainer.new()
-	merge_btn_bar.add_theme_constant_override("separation", 8)
-	merge_btn_bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	_merge_view.add_child(merge_btn_bar)
-
-	_merge_btn_automerge = Button.new()
-	_merge_btn_automerge.text = "Auto-Merge (Ctrl+A)"
-	_merge_btn_automerge.custom_minimum_size = Vector2(160, 36)
-	_merge_btn_automerge.pressed.connect(_on_merge_btn_automerge)
-	merge_btn_bar.add_child(_merge_btn_automerge)
-
-	_merge_btn_local = Button.new()
-	_merge_btn_local.text = "Accept Local (Ctrl+L)"
-	_merge_btn_local.custom_minimum_size = Vector2(160, 36)
-	_merge_btn_local.pressed.connect(_resolve_current_chunk.bind("local"))
-	merge_btn_bar.add_child(_merge_btn_local)
-
-	_merge_btn_remote = Button.new()
-	_merge_btn_remote.text = "Accept Remote (Ctrl+R)"
-	_merge_btn_remote.custom_minimum_size = Vector2(170, 36)
-	_merge_btn_remote.pressed.connect(_resolve_current_chunk.bind("remote"))
-	merge_btn_bar.add_child(_merge_btn_remote)
-
-	_merge_btn_both = Button.new()
-	_merge_btn_both.text = "Accept Both (Ctrl+B)"
-	_merge_btn_both.custom_minimum_size = Vector2(160, 36)
-	_merge_btn_both.pressed.connect(_resolve_current_chunk.bind("both"))
-	merge_btn_bar.add_child(_merge_btn_both)
-
-	# Progress bar
-	progress_bar = ProgressBar.new()
-	progress_bar.min_value = 0.0
-	progress_bar.max_value = 1.0
-	progress_bar.step = 0.01
-	progress_bar.custom_minimum_size = Vector2(0, 24)
-	vbox.add_child(progress_bar)
-
-	# Keyboard grid (clickable anywhere in the panel)
-	_build_keyboard(vbox)
-
-func _build_keyboard(parent: VBoxContainer):
-	keyboard_panel = PanelContainer.new()
-	var kb_style = StyleBoxFlat.new()
-	kb_style.bg_color = Color(0.15, 0.15, 0.18)
-	kb_style.set_content_margin_all(8)
-	kb_style.set_corner_radius_all(4)
-	keyboard_panel.add_theme_stylebox_override("panel", kb_style)
-	keyboard_panel.gui_input.connect(_on_keyboard_panel_input)
-	parent.add_child(keyboard_panel)
-
-	var kb_vbox = VBoxContainer.new()
-	kb_vbox.add_theme_constant_override("separation", 4)
-	keyboard_panel.add_child(kb_vbox)
-
-	var rows = [
-		["Q","W","E","R","T","Y","U","I","O","P","DEL"],
-		["A","S","D","F","G","H","J","K","L","ENTER"],
-		["Z","X","C","V","B","N","M"],
-	]
-
-	for i in rows.size():
-		var row_container = HBoxContainer.new()
-		row_container.add_theme_constant_override("separation", 4)
-		row_container.alignment = BoxContainer.ALIGNMENT_CENTER
-		kb_vbox.add_child(row_container)
-
-		for key_label in rows[i]:
-			var btn = _create_key_button(key_label)
-			if key_label == "ENTER":
-				btn.custom_minimum_size = Vector2(60, 36)
-			elif key_label == "DEL":
-				btn.custom_minimum_size = Vector2(44, 36)
-			row_container.add_child(btn)
-			_key_buttons.append(btn)
-
-	# Bottom row: Ctrl, Alt, Space
-	var bottom_row = HBoxContainer.new()
-	bottom_row.add_theme_constant_override("separation", 4)
-	bottom_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	kb_vbox.add_child(bottom_row)
-
-	for key_label in ["CTRL", "ALT"]:
-		var btn = _create_key_button(key_label)
-		btn.custom_minimum_size = Vector2(50, 36)
-		bottom_row.add_child(btn)
-		_key_buttons.append(btn)
-
-	var space_btn = _create_key_button("SPACE")
-	space_btn.custom_minimum_size = Vector2(200, 36)
-	bottom_row.add_child(space_btn)
-	_key_buttons.append(space_btn)
-
-func _build_merge_column(title_text: String) -> Array:
-	var panel = PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(0.1, 0.1, 0.12)
-	style.set_content_margin_all(6)
-	style.set_corner_radius_all(3)
-	panel.add_theme_stylebox_override("panel", style)
-	var col_vbox = VBoxContainer.new()
-	panel.add_child(col_vbox)
-	var label = Label.new()
-	label.text = title_text
-	label.add_theme_font_size_override("font_size", 11)
-	label.add_theme_color_override("font_color", Color(0.6, 0.8, 1.0))
-	col_vbox.add_child(label)
-	var content = RichTextLabel.new()
-	content.bbcode_enabled = true
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_color_override("default_color", Color(0.8, 0.8, 0.8))
-	content.add_theme_font_size_override("normal_font_size", 12)
-	col_vbox.add_child(content)
-	return [panel, content]
-
-func _create_key_button(key_label: String) -> Button:
-	var btn = Button.new()
-	btn.text = key_label
-	btn.custom_minimum_size = Vector2(36, 36)
-	btn.mouse_filter = Control.MOUSE_FILTER_PASS
-	btn.pressed.connect(_on_key_pressed.bind(btn, key_label))
-	_key_buttons_by_label[key_label] = btn
-	return btn
+func _setup_keyboard():
+	_key_buttons.clear()
+	_key_buttons_by_label.clear()
+	for row in keyboard_panel.get_node("KbVBox").get_children():
+		if row is HBoxContainer:
+			for btn in row.get_children():
+				if btn is Button:
+					_key_buttons.append(btn)
+					_key_buttons_by_label[btn.text] = btn
+					btn.mouse_filter = Control.MOUSE_FILTER_PASS
+					btn.pressed.connect(_on_key_pressed.bind(btn, btn.text))
 
 func _on_keyboard_panel_input(event: InputEvent):
 	if not _keyboard_enabled:
