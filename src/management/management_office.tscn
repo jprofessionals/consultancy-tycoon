@@ -1,6 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/management/management_office.gd" id="1"]
+[ext_resource type="Texture2D" path="res://assets/kenney-furniture/isometric/floorFull_SE.png" id="2"]
+[ext_resource type="Texture2D" path="res://assets/kenney-furniture/isometric/wall_SE.png" id="3"]
+[ext_resource type="Texture2D" path="res://assets/kenney-furniture/isometric/wallDoorway_SE.png" id="4"]
+[ext_resource type="Texture2D" path="res://assets/kenney-furniture/isometric/bookcaseOpen_SE.png" id="5"]
+[ext_resource type="Texture2D" path="res://assets/kenney-furniture/isometric/pottedPlant_SE.png" id="6"]
 
 [node name="ManagementOffice" type="Control"]
 layout_mode = 3
@@ -8,3 +13,530 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.1, 0.1, 0.12, 1)
+
+[node name="FloorR0C0" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 368.0
+offset_top = 40.0
+offset_right = 576.0
+offset_bottom = 192.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C1" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 472.0
+offset_top = 116.0
+offset_right = 680.0
+offset_bottom = 268.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C2" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 576.0
+offset_top = 192.0
+offset_right = 784.0
+offset_bottom = 344.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C3" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 680.0
+offset_top = 268.0
+offset_right = 888.0
+offset_bottom = 420.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C4" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 784.0
+offset_top = 344.0
+offset_right = 992.0
+offset_bottom = 496.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C5" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 888.0
+offset_top = 420.0
+offset_right = 1096.0
+offset_bottom = 572.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C6" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 992.0
+offset_top = 496.0
+offset_right = 1200.0
+offset_bottom = 648.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR0C7" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 1096.0
+offset_top = 572.0
+offset_right = 1304.0
+offset_bottom = 724.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C0" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 264.0
+offset_top = 116.0
+offset_right = 472.0
+offset_bottom = 268.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C1" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 368.0
+offset_top = 192.0
+offset_right = 576.0
+offset_bottom = 344.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C2" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 472.0
+offset_top = 268.0
+offset_right = 680.0
+offset_bottom = 420.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C3" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 576.0
+offset_top = 344.0
+offset_right = 784.0
+offset_bottom = 496.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C4" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 680.0
+offset_top = 420.0
+offset_right = 888.0
+offset_bottom = 572.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C5" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 784.0
+offset_top = 496.0
+offset_right = 992.0
+offset_bottom = 648.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C6" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 888.0
+offset_top = 572.0
+offset_right = 1096.0
+offset_bottom = 724.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR1C7" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 992.0
+offset_top = 648.0
+offset_right = 1200.0
+offset_bottom = 800.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C0" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 160.0
+offset_top = 192.0
+offset_right = 368.0
+offset_bottom = 344.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C1" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 264.0
+offset_top = 268.0
+offset_right = 472.0
+offset_bottom = 420.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C2" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 368.0
+offset_top = 344.0
+offset_right = 576.0
+offset_bottom = 496.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C3" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 472.0
+offset_top = 420.0
+offset_right = 680.0
+offset_bottom = 572.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C4" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 576.0
+offset_top = 496.0
+offset_right = 784.0
+offset_bottom = 648.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C5" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 680.0
+offset_top = 572.0
+offset_right = 888.0
+offset_bottom = 724.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C6" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 784.0
+offset_top = 648.0
+offset_right = 992.0
+offset_bottom = 800.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR2C7" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 888.0
+offset_top = 724.0
+offset_right = 1096.0
+offset_bottom = 876.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C0" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 56.0
+offset_top = 268.0
+offset_right = 264.0
+offset_bottom = 420.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C1" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 160.0
+offset_top = 344.0
+offset_right = 368.0
+offset_bottom = 496.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C2" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 264.0
+offset_top = 420.0
+offset_right = 472.0
+offset_bottom = 572.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C3" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 368.0
+offset_top = 496.0
+offset_right = 576.0
+offset_bottom = 648.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C4" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 472.0
+offset_top = 572.0
+offset_right = 680.0
+offset_bottom = 724.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C5" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 576.0
+offset_top = 648.0
+offset_right = 784.0
+offset_bottom = 800.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C6" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 680.0
+offset_top = 724.0
+offset_right = 888.0
+offset_bottom = 876.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="FloorR3C7" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 784.0
+offset_top = 800.0
+offset_right = 992.0
+offset_bottom = 952.0
+texture = ExtResource("2")
+mouse_filter = 2
+
+[node name="WallC1" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 522.0
+offset_top = 6.0
+offset_right = 730.0
+offset_bottom = 158.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="WallC2" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 626.0
+offset_top = 82.0
+offset_right = 834.0
+offset_bottom = 234.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="WallC3" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 730.0
+offset_top = 158.0
+offset_right = 938.0
+offset_bottom = 310.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="WallC4" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 834.0
+offset_top = 234.0
+offset_right = 1042.0
+offset_bottom = 386.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="WallC5" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 938.0
+offset_top = 310.0
+offset_right = 1146.0
+offset_bottom = 462.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="WallC6" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 1042.0
+offset_top = 386.0
+offset_right = 1250.0
+offset_bottom = 538.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="WallC7" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 1146.0
+offset_top = 462.0
+offset_right = 1354.0
+offset_bottom = 614.0
+texture = ExtResource("3")
+mouse_filter = 2
+
+[node name="BackDoor" type="TextureRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 418.0
+offset_top = -70.0
+offset_right = 626.0
+offset_bottom = 82.0
+texture = ExtResource("4")
+mouse_filter = 0
+mouse_default_cursor_shape = 2
+z_index = 1
+
+[node name="BackDoorLabel" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 413.0
+offset_top = -80.0
+offset_right = 513.0
+offset_bottom = -66.0
+theme_override_colors/font_color = Color(0.85, 0.78, 0.65, 1)
+theme_override_font_sizes/font_size = 11
+text = "Back to Desk"
+mouse_filter = 2
+z_index = 2
+
+[node name="ContractsObj" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 631.0
+offset_top = 102.0
+offset_right = 731.0
+offset_bottom = 148.0
+color = Color(0.85, 0.87, 0.85, 1)
+mouse_default_cursor_shape = 2
+z_index = 1
+
+[node name="ContractsLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 118.0
+offset_right = 713.0
+offset_bottom = 132.0
+theme_override_colors/font_color = Color(0.15, 0.15, 0.15, 1)
+theme_override_font_sizes/font_size = 12
+text = "Contracts"
+mouse_filter = 2
+z_index = 1
+
+[node name="HiringObj" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 735.0
+offset_top = 178.0
+offset_right = 835.0
+offset_bottom = 224.0
+color = Color(0.12, 0.15, 0.22, 1)
+mouse_default_cursor_shape = 2
+z_index = 1
+
+[node name="HiringLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 764.0
+offset_top = 194.0
+offset_right = 806.0
+offset_bottom = 208.0
+theme_override_colors/font_color = Color(0.4, 0.7, 0.9, 1)
+theme_override_font_sizes/font_size = 12
+text = "Hiring"
+mouse_filter = 2
+z_index = 1
+
+[node name="StaffObj" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 943.0
+offset_top = 330.0
+offset_right = 1023.0
+offset_bottom = 376.0
+color = Color(0.55, 0.45, 0.3, 1)
+mouse_default_cursor_shape = 2
+z_index = 1
+
+[node name="StaffLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 966.0
+offset_top = 346.0
+offset_right = 1001.0
+offset_bottom = 360.0
+theme_override_colors/font_color = Color(0.9, 0.85, 0.75, 1)
+theme_override_font_sizes/font_size = 12
+text = "Staff"
+mouse_filter = 2
+z_index = 1
+
+[node name="InboxObj" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 1047.0
+offset_top = 406.0
+offset_right = 1127.0
+offset_bottom = 452.0
+color = Color(0.3, 0.35, 0.45, 1)
+mouse_default_cursor_shape = 2
+z_index = 1
+
+[node name="InboxLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 1070.0
+offset_top = 422.0
+offset_right = 1105.0
+offset_bottom = 436.0
+theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_font_sizes/font_size = 12
+text = "Inbox"
+mouse_filter = 2
+z_index = 1
+
+[node name="TeamsObj" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 1151.0
+offset_top = 482.0
+offset_right = 1241.0
+offset_bottom = 528.0
+color = Color(0.3, 0.28, 0.25, 1)
+z_index = 1
+
+[node name="TeamsLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 1179.0
+offset_top = 498.0
+offset_right = 1214.0
+offset_bottom = 512.0
+theme_override_colors/font_color = Color(0.5, 0.48, 0.45, 1)
+theme_override_font_sizes/font_size = 12
+text = "Teams"
+mouse_filter = 2
+z_index = 1
+
+[node name="TeamsLockedLabel" type="Label" parent="."]
+layout_mode = 0
+offset_left = 1173.0
+offset_top = 514.0
+offset_right = 1213.0
+offset_bottom = 525.0
+theme_override_colors/font_color = Color(0.6, 0.5, 0.4, 1)
+theme_override_font_sizes/font_size = 9
+text = "Locked"
+mouse_filter = 2
+z_index = 2
+
+[node name="Bookcase" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 1156.0
+offset_top = 472.0
+offset_right = 1364.0
+offset_bottom = 624.0
+texture = ExtResource("5")
+mouse_filter = 2
+
+[node name="Plant" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 1072.0
+offset_top = 436.0
+offset_right = 1280.0
+offset_bottom = 588.0
+texture = ExtResource("6")
+mouse_filter = 2
