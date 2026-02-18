@@ -1,11 +1,16 @@
 extends PanelContainer
 
+signal leaderboard_pressed
+signal profile_pressed
+
 @onready var money_label: Label = %MoneyLabel
 @onready var reputation_label: Label = %ReputationLabel
 @onready var task_label: Label = %TaskLabel
 @onready var ai_label: Label = %AiLabel
 @onready var team_label: Label = %TeamLabel
 @onready var stuck_label: Label = %StuckLabel
+@onready var leaderboard_btn: Button = %LeaderboardBtn
+@onready var profile_btn: Button = %ProfileBtn
 
 func _ready():
 	var bg = StyleBoxFlat.new()
@@ -21,6 +26,8 @@ func _ready():
 
 	EventBus.money_changed.connect(_on_money_changed)
 	EventBus.reputation_changed.connect(_on_reputation_changed)
+	leaderboard_btn.pressed.connect(func(): leaderboard_pressed.emit())
+	profile_btn.pressed.connect(func(): profile_pressed.emit())
 	_on_money_changed(GameState.money)
 	_on_reputation_changed(GameState.reputation)
 

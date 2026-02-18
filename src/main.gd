@@ -10,6 +10,8 @@ var bidding_panel: PanelContainer
 var skill_panel: PanelContainer
 var email_panel: PanelContainer
 var ai_tool_panel: PanelContainer
+var leaderboard_panel: PanelContainer
+var cloud_panel: PanelContainer
 var task_factory: TaskFactory = TaskFactory.new()
 var skill_manager: SkillManager = SkillManager.new()
 var event_manager: EventManager = EventManager.new()
@@ -198,6 +200,14 @@ func _build_overlay_layer():
 	ai_tool_panel.visible = false
 	center.add_child(ai_tool_panel)
 
+	leaderboard_panel = load("res://src/ui/leaderboard_panel.tscn").instantiate()
+	leaderboard_panel.visible = false
+	center.add_child(leaderboard_panel)
+
+	cloud_panel = load("res://src/ui/cloud_panel.tscn").instantiate()
+	cloud_panel.visible = false
+	center.add_child(cloud_panel)
+
 func _build_management_layer():
 	management_layer = CanvasLayer.new()
 	management_layer.layer = 5
@@ -296,12 +306,22 @@ func _build_welcome_layer():
 		continue_btn.pressed.connect(_on_start_game.bind(true))
 		content.add_child(continue_btn)
 
+	var name_edit = LineEdit.new()
+	name_edit.placeholder_text = "Enter your name..."
+	name_edit.custom_minimum_size = Vector2(250, 40)
+	name_edit.add_theme_font_size_override("font_size", 16)
+	name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_edit.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	content.add_child(name_edit)
+
 	var start_btn = Button.new()
 	start_btn.text = "New Game"
 	start_btn.custom_minimum_size = Vector2(200, 50)
 	start_btn.add_theme_font_size_override("font_size", 18)
 	start_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	start_btn.pressed.connect(_on_start_game.bind(false))
+	start_btn.pressed.connect(func():
+		_on_start_game(false, name_edit.text.strip_edges())
+	)
 	content.add_child(start_btn)
 
 	var dev_btn = Button.new()
@@ -316,6 +336,15 @@ func _build_welcome_layer():
 	)
 	content.add_child(dev_btn)
 
+	var recover_btn = Button.new()
+	recover_btn.text = "Recover Save"
+	recover_btn.custom_minimum_size = Vector2(200, 40)
+	recover_btn.add_theme_font_size_override("font_size", 14)
+	recover_btn.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	recover_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	recover_btn.pressed.connect(_show_recover_dialog)
+	content.add_child(recover_btn)
+
 func _connect_signals():
 	bidding_panel.contract_accepted.connect(_on_contract_accepted)
 	bidding_panel.close_requested.connect(_hide_overlay)
@@ -323,6 +352,10 @@ func _connect_signals():
 	email_panel.close_requested.connect(_hide_overlay)
 	email_panel.choice_made.connect(_on_email_choice)
 	ai_tool_panel.close_requested.connect(_hide_overlay)
+	leaderboard_panel.close_requested.connect(_hide_overlay)
+	cloud_panel.close_requested.connect(_hide_overlay)
+	hud.leaderboard_pressed.connect(_on_leaderboard_btn)
+	hud.profile_pressed.connect(_on_cloud_btn)
 	EventBus.tab_task_done.connect(_on_tab_task_done)
 	EventBus.skill_purchased.connect(func(_id): _update_click_power())
 	EventBus.ai_tool_upgraded.connect(func(_tid, _tier): _update_ai_status())
@@ -388,7 +421,7 @@ func _setup_timers():
 
 # ── Game Start ──
 
-func _on_start_game(load_save: bool = false):
+func _on_start_game(load_save: bool = false, player_name: String = ""):
 	welcome_layer.queue_free()
 	welcome_layer = null
 	_game_started = true
@@ -402,6 +435,10 @@ func _on_start_game(load_save: bool = false):
 	event_timer.start()
 	salary_timer.start()
 	autosave_timer.start()
+	if not load_save and player_name != "":
+		GameState.player_name = player_name
+		if not CloudManager.is_authenticated():
+			CloudManager.create_player(player_name)
 	# Sync with cloud on game start
 	if CloudManager.is_authenticated():
 		var runtime = _collect_runtime_state()
@@ -411,6 +448,110 @@ func _on_start_game(load_save: bool = false):
 	# Update HUD after load
 	hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
 	_update_ai_status()
+
+func _show_recover_dialog():
+	var recover_layer = CanvasLayer.new()
+	recover_layer.layer = 101
+	add_child(recover_layer)
+
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.6)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	recover_layer.add_child(bg)
+
+	var center = CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	recover_layer.add_child(center)
+
+	var panel = PanelContainer.new()
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.12, 0.12, 0.16)
+	style.set_content_margin_all(24)
+	style.set_corner_radius_all(8)
+	style.border_color = Color(0.3, 0.3, 0.35)
+	style.set_border_width_all(1)
+	panel.add_theme_stylebox_override("panel", style)
+	center.add_child(panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "RECOVER SAVE"
+	title.add_theme_font_size_override("font_size", 20)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var desc = Label.new()
+	desc.text = "Enter your recovery passphrase"
+	desc.add_theme_font_size_override("font_size", 14)
+	desc.add_theme_color_override("font_color", Color(0.6, 0.6, 0.65))
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(desc)
+
+	var passphrase_edit = LineEdit.new()
+	passphrase_edit.placeholder_text = "e.g., BRAVE-LION-42"
+	passphrase_edit.custom_minimum_size = Vector2(250, 40)
+	passphrase_edit.add_theme_font_size_override("font_size", 16)
+	passphrase_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(passphrase_edit)
+
+	var status_label = Label.new()
+	status_label.text = ""
+	status_label.add_theme_font_size_override("font_size", 12)
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(status_label)
+
+	var btn_row = HBoxContainer.new()
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 12)
+	vbox.add_child(btn_row)
+
+	var cancel_btn = Button.new()
+	cancel_btn.text = "Cancel"
+	cancel_btn.custom_minimum_size = Vector2(100, 36)
+	cancel_btn.pressed.connect(func(): recover_layer.queue_free())
+	btn_row.add_child(cancel_btn)
+
+	var recover_btn = Button.new()
+	recover_btn.text = "Recover"
+	recover_btn.custom_minimum_size = Vector2(100, 36)
+	recover_btn.pressed.connect(func():
+		var phrase = passphrase_edit.text.strip_edges()
+		if phrase == "":
+			status_label.text = "Enter a passphrase"
+			return
+		status_label.text = "Recovering..."
+		recover_btn.disabled = true
+		await CloudManager.recover_player(phrase)
+		# After recovery, download the cloud save
+		var cloud_data = await CloudManager.download_save()
+		if cloud_data.is_empty() or not cloud_data.has("save_data"):
+			status_label.text = "No save found for this passphrase"
+			recover_btn.disabled = false
+			return
+		# Write cloud save locally and load
+		var save_data = cloud_data.get("save_data", {})
+		var json_string = JSON.stringify(save_data, "\t")
+		var file = FileAccess.open(SaveManager.save_path, FileAccess.WRITE)
+		if file:
+			file.store_string(json_string)
+			file.close()
+		recover_layer.queue_free()
+		_on_start_game(true)
+	)
+	btn_row.add_child(recover_btn)
+
+func _on_leaderboard_btn():
+	if state == DeskState.DESK or state == DeskState.ZOOMED_TO_MONITOR:
+		leaderboard_panel.refresh()
+		_show_overlay(leaderboard_panel)
+
+func _on_cloud_btn():
+	if state == DeskState.DESK or state == DeskState.ZOOMED_TO_MONITOR:
+		cloud_panel.refresh()
+		_show_overlay(cloud_panel)
 
 func _unhandled_input(event: InputEvent):
 	if not _game_started:
