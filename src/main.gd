@@ -437,8 +437,8 @@ func _on_start_game(load_save: bool = false, player_name: String = ""):
 	autosave_timer.start()
 	if not load_save and player_name != "":
 		GameState.player_name = player_name
-		if not CloudManager.is_authenticated():
-			CloudManager.create_player(player_name)
+	if not CloudManager.is_authenticated() and GameState.player_name != "":
+		await CloudManager.create_player(GameState.player_name)
 	# Sync with cloud on game start
 	if CloudManager.is_authenticated():
 		var runtime = _collect_runtime_state()
