@@ -1,9 +1,10 @@
 extends Node
 
 const AUTH_PATH = "user://cloud_auth.json"
-const DEFAULT_BASE_URL = "https://tycoon.jpro.dev"
+const PRODUCTION_URL = "https://tycoon.jpro.dev"
+const LOCAL_URL = "http://localhost:3080"
 
-var base_url: String = DEFAULT_BASE_URL
+var base_url: String = ""
 var player_id: String = ""
 var auth_token: String = ""
 var passphrase: String = ""
@@ -15,6 +16,7 @@ signal sync_completed(success: bool)
 signal leaderboard_fetched(data: Dictionary)
 
 func _ready():
+	base_url = LOCAL_URL if OS.is_debug_build() else PRODUCTION_URL
 	_load_auth()
 
 # ── Auth persistence ──
