@@ -5,6 +5,7 @@
 
 # Build output
 build/
+backend/target/
 
 # IDE
 .idea/
