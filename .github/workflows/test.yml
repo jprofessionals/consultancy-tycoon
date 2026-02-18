@@ -93,7 +93,6 @@ jobs:
           cp -r build/* deploy-package/web/
           cp backend/target/release/consultancy-tycoon-api deploy-package/
           chmod +x deploy-package/consultancy-tycoon-api
-          cp -r backend/migrations deploy-package/
 
       # ── Deploy ──
 

@@ -23,15 +23,6 @@
         group: "{{ deploy_user }}"
         mode: "0755"
 
-    # ── Database migrations (before service start) ──
-
-    - name: Run database migrations
-      ansible.builtin.shell: |
-        sudo -u postgres psql -d {{ db_name }} -f {{ app_dir }}/migrations/001_initial.sql
-      register: migration_result
-      failed_when: false
-      changed_when: "'CREATE' in migration_result.stdout"
-
     # ── Backend systemd service ──
 
     - name: Write API service unit to tmp
