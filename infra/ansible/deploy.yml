@@ -48,37 +48,22 @@
           WantedBy=multi-user.target
         mode: "0644"
 
-    - name: Install API service unit
-      become: true
-      ansible.builtin.copy:
-        src: /tmp/{{ app_name }}-api.service
-        dest: /etc/systemd/system/{{ app_name }}-api.service
-        remote_src: true
-        mode: "0644"
-
-    - name: Reload systemd
-      become: true
-      ansible.builtin.systemd:
-        daemon_reload: true
-
-    - name: Enable and restart API service
-      become: true
-      ansible.builtin.systemd:
-        name: "{{ app_name }}-api"
-        enabled: true
-        state: restarted
+    - name: Install service and start API
+      ansible.builtin.shell: |
+        sudo cp /tmp/{{ app_name }}-api.service /etc/systemd/system/
+        sudo systemctl daemon-reload
+        sudo systemctl enable {{ app_name }}-api
+        sudo systemctl restart {{ app_name }}-api
+      changed_when: true
 
     # ── Database migrations ──
 
     - name: Run database migrations
-      become: true
-      become_user: postgres
-      community.postgresql.postgresql_query:
-        db: "{{ db_name }}"
-        path_to_script: "{{ app_dir }}/migrations/001_initial.sql"
+      ansible.builtin.shell: |
+        sudo -u postgres psql -d {{ db_name }} -f {{ app_dir }}/migrations/001_initial.sql
       register: migration_result
       failed_when: false
-      changed_when: migration_result.statusmessage is defined and 'CREATE' in migration_result.statusmessage
+      changed_when: "'CREATE' in migration_result.stdout"
 
     # ── Caddy ──
 
@@ -102,6 +87,5 @@
         mode: "0644"
 
     - name: Reload Caddy
-      become: true
       ansible.builtin.shell: sudo systemctl reload caddy
       changed_when: true
