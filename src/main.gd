@@ -671,6 +671,12 @@ func _open_pause_menu():
 	load_btn.disabled = not SaveManager.has_save()
 	vbox.add_child(load_btn)
 
+	var menu_btn = Button.new()
+	menu_btn.text = "Main Menu"
+	menu_btn.custom_minimum_size = Vector2(200, 40)
+	menu_btn.pressed.connect(_on_main_menu_pressed)
+	vbox.add_child(menu_btn)
+
 	var quit_btn = Button.new()
 	quit_btn.text = "Quit"
 	quit_btn.custom_minimum_size = Vector2(200, 40)
@@ -699,6 +705,12 @@ func _notification(what: int):
 		if _game_started:
 			var runtime = _collect_runtime_state()
 			SaveManager.save_game(runtime)
+
+func _on_main_menu_pressed():
+	var runtime = _collect_runtime_state()
+	SaveManager.save_game(runtime)
+	_close_pause_menu()
+	_return_to_welcome()
 
 func _on_quit_pressed():
 	# Save before quitting
