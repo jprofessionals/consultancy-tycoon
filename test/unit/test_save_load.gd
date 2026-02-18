@@ -82,6 +82,56 @@ func test_round_trip_easter_eggs():
 
 	assert_true(state.claimed_easter_eggs.get("bsod", false), "Easter eggs should be restored")
 
+# ── Score fields ──
+
+func test_round_trip_score_fields():
+	state.total_money_earned = 50000.0
+	state.total_manual_tasks_completed = 42
+	state.player_name = "TestPlayer"
+	save_mgr.save_game(_runtime(), state)
+
+	state.total_money_earned = 0.0
+	state.total_manual_tasks_completed = 0
+	state.player_name = ""
+
+	var data = save_mgr.load_game()
+	save_mgr.apply_save(data, state)
+
+	assert_almost_eq(state.total_money_earned, 50000.0, 0.01)
+	assert_eq(state.total_manual_tasks_completed, 42)
+	assert_eq(state.player_name, "TestPlayer")
+
+func test_backward_compat_missing_score_fields():
+	var old_data: Dictionary = {
+		"version": 1,
+		"timestamp": 12345,
+		"game_state": {
+			"money": 1000.0,
+			"reputation": 5.0,
+			"skills": {},
+			"ai_tools": {},
+			"office_unlocked": false,
+			"claimed_easter_eggs": {},
+		},
+		"consultants": [],
+		"active_assignments": [],
+		"active_rentals": [],
+		"tabs": [],
+		"focused_index": 0,
+		"game_started": true,
+	}
+	var json_string = JSON.stringify(old_data, "\t")
+	var file = FileAccess.open(TEST_SAVE_PATH, FileAccess.WRITE)
+	file.store_string(json_string)
+	file.close()
+
+	var data = save_mgr.load_game()
+	save_mgr.apply_save(data, state)
+
+	assert_eq(state.total_money_earned, 0.0, "Missing field should default to 0")
+	assert_eq(state.total_manual_tasks_completed, 0, "Missing field should default to 0")
+	assert_eq(state.player_name, "", "Missing field should default to empty")
+
 # ── Consultants ──
 
 func test_round_trip_consultants():

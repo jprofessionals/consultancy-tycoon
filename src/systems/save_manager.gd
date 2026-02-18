@@ -65,6 +65,9 @@ func _build_save_dict(runtime_state: Dictionary, gs_node: Node) -> Dictionary:
 		"office_unlocked": gs_node.office_unlocked,
 		"claimed_easter_eggs": gs_node.claimed_easter_eggs.duplicate(),
 		"desk_capacity": gs_node.desk_capacity,
+		"total_money_earned": gs_node.total_money_earned,
+		"total_manual_tasks_completed": gs_node.total_manual_tasks_completed,
+		"player_name": gs_node.player_name,
 	}
 
 	# Consultants
@@ -110,6 +113,9 @@ func apply_save(data: Dictionary, game_state: Node = null) -> Dictionary:
 	gs_node.office_unlocked = gs.get("office_unlocked", false)
 	gs_node.claimed_easter_eggs = gs.get("claimed_easter_eggs", {}).duplicate()
 	gs_node.desk_capacity = int(gs.get("desk_capacity", 4))
+	gs_node.total_money_earned = float(gs.get("total_money_earned", 0.0))
+	gs_node.total_manual_tasks_completed = int(gs.get("total_manual_tasks_completed", 0))
+	gs_node.player_name = str(gs.get("player_name", ""))
 
 	# Restore consultants
 	gs_node.consultants.clear()
@@ -390,6 +396,9 @@ func create_test_save() -> bool:
 			"office_unlocked": true,
 			"claimed_easter_eggs": {},
 			"desk_capacity": 6,
+			"total_money_earned": 350000.0,
+			"total_manual_tasks_completed": 75,
+			"player_name": "DevPlayer",
 		},
 		"consultants": [
 			{
