@@ -23,6 +23,31 @@
         group: "{{ deploy_user }}"
         mode: "0755"
 
+    # ── Caddy (first, so web frontend works immediately) ──
+
+    - name: Write Caddy site config
+      ansible.builtin.copy:
+        dest: "/etc/caddy/sites/{{ app_name }}.caddy"
+        content: |
+          {{ app_domain }} {
+              handle /api/* {
+                  reverse_proxy localhost:{{ backend_port }}
+              }
+              handle {
+                  root * {{ app_dir }}/web
+                  file_server
+                  header {
+                      Cross-Origin-Opener-Policy same-origin
+                      Cross-Origin-Embedder-Policy require-corp
+                  }
+              }
+          }
+        mode: "0644"
+
+    - name: Reload Caddy
+      ansible.builtin.shell: sudo systemctl reload caddy
+      changed_when: true
+
     # ── Backend systemd service ──
 
     - name: Write API service unit to tmp
@@ -57,29 +82,4 @@
 
     - name: Restart API service
       ansible.builtin.shell: sudo systemctl restart {{ app_name }}-api
-      changed_when: true
-
-    # ── Caddy ──
-
-    - name: Write Caddy site config
-      ansible.builtin.copy:
-        dest: "/etc/caddy/sites/{{ app_name }}.caddy"
-        content: |
-          {{ app_domain }} {
-              handle /api/* {
-                  reverse_proxy localhost:{{ backend_port }}
-              }
-              handle {
-                  root * {{ app_dir }}/web
-                  file_server
-                  header {
-                      Cross-Origin-Opener-Policy same-origin
-                      Cross-Origin-Embedder-Policy require-corp
-                  }
-              }
-          }
-        mode: "0644"
-
-    - name: Reload Caddy
-      ansible.builtin.shell: sudo systemctl reload caddy
       changed_when: true
