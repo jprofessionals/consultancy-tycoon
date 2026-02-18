@@ -402,6 +402,12 @@ func _on_start_game(load_save: bool = false):
 	event_timer.start()
 	salary_timer.start()
 	autosave_timer.start()
+	# Sync with cloud on game start
+	if CloudManager.is_authenticated():
+		var runtime = _collect_runtime_state()
+		var save_dict = SaveManager._build_save_dict(runtime, GameState)
+		CloudManager.submit_scores(GameState.get_score_components())
+		CloudManager.upload_save(save_dict)
 	# Update HUD after load
 	hud.update_team_info(GameState.consultants.size(), GameState.active_assignments.size())
 	_update_ai_status()
@@ -541,6 +547,11 @@ func _on_autosave():
 		return
 	var runtime = _collect_runtime_state()
 	SaveManager.save_game(runtime)
+	# Cloud sync (best-effort, non-blocking)
+	if CloudManager.is_authenticated():
+		var save_dict = SaveManager._build_save_dict(runtime, GameState)
+		CloudManager.submit_scores(GameState.get_score_components())
+		CloudManager.upload_save(save_dict)
 
 func _notification(what: int):
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
