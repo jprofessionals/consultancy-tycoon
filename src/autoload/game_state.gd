@@ -10,12 +10,17 @@ var active_assignments: Array = []  # Array of ConsultantAssignment
 var claimed_easter_eggs: Dictionary = {}  # easter_egg_id -> true
 var desk_capacity: int = 4
 var active_rentals: Array = []  # Array of ConsultantRental
+var total_money_earned: float = 0.0
+var total_manual_tasks_completed: int = 0
+var player_name: String = ""
 
 func _get_event_bus() -> Node:
 	return Engine.get_main_loop().root.get_node_or_null("EventBus") if Engine.get_main_loop() else null
 
 func add_money(amount: float) -> void:
 	money += amount
+	if amount > 0:
+		total_money_earned += amount
 	var bus = _get_event_bus()
 	if bus:
 		bus.money_changed.emit(money)
@@ -28,6 +33,9 @@ func spend_money(amount: float) -> bool:
 	if bus:
 		bus.money_changed.emit(money)
 	return true
+
+func increment_manual_tasks() -> void:
+	total_manual_tasks_completed += 1
 
 func add_reputation(amount: float) -> void:
 	reputation += amount
