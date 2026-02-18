@@ -17,7 +17,12 @@ signal leaderboard_fetched(data: Dictionary)
 
 func _ready():
 	base_url = LOCAL_URL if OS.is_debug_build() else PRODUCTION_URL
+	print("[Cloud] Base URL: ", base_url)
 	_load_auth()
+	if is_authenticated():
+		print("[Cloud] Loaded auth for player ", player_id.left(8))
+	else:
+		print("[Cloud] No saved auth found")
 
 # ── Auth persistence ──
 
@@ -52,21 +57,34 @@ func is_authenticated() -> bool:
 # ── Player creation ──
 
 func create_player(display_name: String) -> void:
+	print("[Cloud] Creating player: ", display_name, " via ", base_url + "/api/players")
 	var http = HTTPRequest.new()
 	add_child(http)
 	var body = JSON.stringify({"display_name": display_name})
-	http.request(base_url + "/api/players", ["Content-Type: application/json"], HTTPClient.METHOD_POST, body)
+	var err = http.request(base_url + "/api/players", ["Content-Type: application/json"], HTTPClient.METHOD_POST, body)
+	if err != OK:
+		print("[Cloud] HTTP request failed to send: ", err)
+		http.queue_free()
+		return
 	var result = await http.request_completed
 	http.queue_free()
+	var result_code = result[0]
 	var response_code = result[1]
+	var response_body = result[3].get_string_from_utf8()
+	print("[Cloud] Create player response: result=", result_code, " http=", response_code, " body=", response_body.left(200))
 	if response_code == 200 or response_code == 201:
 		var json = JSON.new()
-		if json.parse(result[3].get_string_from_utf8()) == OK:
+		if json.parse(response_body) == OK:
 			player_id = str(json.data.get("id", ""))
 			auth_token = str(json.data.get("token", ""))
 			passphrase = str(json.data.get("passphrase", ""))
 			_save_auth()
+			print("[Cloud] Player created: ", player_id.left(8), " passphrase: ", passphrase)
 			player_created.emit(player_id, passphrase)
+		else:
+			print("[Cloud] Failed to parse response JSON")
+	else:
+		print("[Cloud] Create player failed with HTTP ", response_code)
 
 func recover_player(input_passphrase: String) -> void:
 	var http = HTTPRequest.new()
