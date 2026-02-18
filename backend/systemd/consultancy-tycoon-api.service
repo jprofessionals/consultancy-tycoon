@@ -1,0 +1,15 @@
+[Unit]
+Description=Consultancy Tycoon API
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/consultancy-tycoon-api
+ExecStart=/opt/consultancy-tycoon-api/consultancy-tycoon-api
+EnvironmentFile=/opt/consultancy-tycoon-api/.env
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
