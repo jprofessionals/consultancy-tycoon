@@ -60,3 +60,25 @@ func test_increment_manual_tasks():
 
 func test_initial_player_name_empty():
 	assert_eq(state.player_name, "")
+
+func test_get_score_components():
+	state.total_money_earned = 10000.0
+	state.reputation = 20.0
+	state.skills = {"javascript": 3, "python": 2}
+	state.ai_tools = {"auto_writer": 2, "auto_reviewer": 1}
+	state.total_manual_tasks_completed = 10
+	var c1 = ConsultantData.new()
+	c1.id = "score_1"
+	state.consultants.append(c1)
+	var c2 = ConsultantData.new()
+	c2.id = "score_2"
+	state.consultants.append(c2)
+
+	var components = state.get_score_components()
+
+	assert_almost_eq(components["total_money_earned"], 10000.0, 0.01)
+	assert_almost_eq(components["reputation"], 20.0, 0.01)
+	assert_eq(components["skill_levels_sum"], 5)
+	assert_eq(components["consultants_count"], 2)
+	assert_eq(components["ai_tool_tiers_sum"], 3)
+	assert_eq(components["manual_tasks_completed"], 10)

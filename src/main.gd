@@ -761,6 +761,10 @@ func _start_next_task_on_tab(tab: CodingTab):
 	ide.start_task_on_tab(tab, task)
 
 func _on_tab_task_done(task: CodingTask, tab: CodingTab):
+	# Track manual task completion (focused tab while at monitor)
+	var tab_idx = ide.tabs.find(tab)
+	if tab_idx == ide.get_focused_index() and state == DeskState.ZOOMED_TO_MONITOR:
+		GameState.increment_manual_tasks()
 	tab.task_index += 1
 	if not tab.is_contract_done():
 		var delay = get_tree().create_timer(1.5)

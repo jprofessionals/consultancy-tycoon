@@ -37,6 +37,22 @@ func spend_money(amount: float) -> bool:
 func increment_manual_tasks() -> void:
 	total_manual_tasks_completed += 1
 
+func get_score_components() -> Dictionary:
+	var skill_sum: int = 0
+	for level in skills.values():
+		skill_sum += int(level)
+	var ai_sum: int = 0
+	for tier in ai_tools.values():
+		ai_sum += int(tier)
+	return {
+		"total_money_earned": total_money_earned,
+		"reputation": reputation,
+		"skill_levels_sum": skill_sum,
+		"consultants_count": consultants.size(),
+		"ai_tool_tiers_sum": ai_sum,
+		"manual_tasks_completed": total_manual_tasks_completed,
+	}
+
 func add_reputation(amount: float) -> void:
 	reputation += amount
 	var bus = _get_event_bus()
