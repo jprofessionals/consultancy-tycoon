@@ -7,5 +7,8 @@
 build/
 backend/target/
 
+# Secrets
+backend/.env
+
 # IDE
 .idea/
