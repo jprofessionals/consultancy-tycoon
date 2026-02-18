@@ -7,6 +7,12 @@
     app_name: consultancy-tycoon
     app_dir: "/home/{{ deploy_user }}/tycoon.{{ domain | default('jpro.dev') }}"
     app_domain: "tycoon.{{ domain | default('jpro.dev') }}"
+    backend_port: 3080
+    db_name: consultancy_tycoon
+    db_user: tycoon
+    db_password: "{{ vault_consultancy_tycoon_db_password }}"
+    jwt_secret: "{{ vault_consultancy_tycoon_jwt_secret }}"
+    database_url: "postgres://{{ db_user }}:{{ db_password }}@127.0.0.1:5432/{{ db_name }}"
 
   tasks:
     - name: Ensure app directory exists
@@ -17,20 +23,85 @@
         group: "{{ deploy_user }}"
         mode: "0755"
 
+    # ── Backend systemd service ──
+
+    - name: Write API service unit to tmp
+      ansible.builtin.copy:
+        dest: /tmp/{{ app_name }}-api.service
+        content: |
+          [Unit]
+          Description=Consultancy Tycoon API
+          After=network.target postgresql.service
+
+          [Service]
+          Type=simple
+          User={{ deploy_user }}
+          WorkingDirectory={{ app_dir }}
+          ExecStart={{ app_dir }}/consultancy-tycoon-api
+          Restart=on-failure
+          RestartSec=5
+          Environment=DATABASE_URL={{ database_url }}
+          Environment=JWT_SECRET={{ jwt_secret }}
+          Environment=LISTEN_ADDR=127.0.0.1:{{ backend_port }}
+
+          [Install]
+          WantedBy=multi-user.target
+        mode: "0644"
+
+    - name: Install API service unit
+      become: true
+      ansible.builtin.copy:
+        src: /tmp/{{ app_name }}-api.service
+        dest: /etc/systemd/system/{{ app_name }}-api.service
+        remote_src: true
+        mode: "0644"
+
+    - name: Reload systemd
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and restart API service
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ app_name }}-api"
+        enabled: true
+        state: restarted
+
+    # ── Database migrations ──
+
+    - name: Run database migrations
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_query:
+        db: "{{ db_name }}"
+        path_to_script: "{{ app_dir }}/migrations/001_initial.sql"
+      register: migration_result
+      failed_when: false
+      changed_when: migration_result.statusmessage is defined and 'CREATE' in migration_result.statusmessage
+
+    # ── Caddy ──
+
     - name: Write Caddy site config
       ansible.builtin.copy:
         dest: "/etc/caddy/sites/{{ app_name }}.caddy"
         content: |
           {{ app_domain }} {
-              root * {{ app_dir }}
-              file_server
-              header {
-                  Cross-Origin-Opener-Policy same-origin
-                  Cross-Origin-Embedder-Policy require-corp
+              handle /api/* {
+                  reverse_proxy localhost:{{ backend_port }}
+              }
+              handle {
+                  root * {{ app_dir }}/web
+                  file_server
+                  header {
+                      Cross-Origin-Opener-Policy same-origin
+                      Cross-Origin-Embedder-Policy require-corp
+                  }
               }
           }
         mode: "0644"
 
     - name: Reload Caddy
+      become: true
       ansible.builtin.shell: sudo systemctl reload caddy
       changed_when: true

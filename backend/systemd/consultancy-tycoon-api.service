@@ -4,7 +4,7 @@ After=network.target postgresql.service
 
 [Service]
 Type=simple
-User=www-data
+User=deploy
 WorkingDirectory=/opt/consultancy-tycoon-api
 ExecStart=/opt/consultancy-tycoon-api/consultancy-tycoon-api
 EnvironmentFile=/opt/consultancy-tycoon-api/.env

@@ -217,6 +217,7 @@ dependencies = [
  "argon2",
  "axum",
  "chrono",
+ "dotenvy",
  "jsonwebtoken",
  "rand 0.9.2",
  "serde",

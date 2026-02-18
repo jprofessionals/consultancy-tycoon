@@ -42,6 +42,8 @@ jobs:
           path: ansible-controll
           ssh-key: ${{ secrets.ANSIBLE_CONTROLL_DEPLOY_KEY }}
 
+      # ── Godot web export ──
+
       - name: Install Godot 4.6
         run: |
           wget -q https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
@@ -64,6 +66,37 @@ jobs:
           mkdir -p build
           godot --headless --export-release "Web" build/index.html
 
+      # ── Rust backend ──
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            backend/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('backend/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build backend
+        working-directory: backend
+        run: cargo build --release
+
+      # ── Create deploy package ──
+
+      - name: Stage deploy package
+        run: |
+          mkdir -p deploy-package/web
+          cp -r build/* deploy-package/web/
+          cp backend/target/release/consultancy-tycoon-api deploy-package/
+          chmod +x deploy-package/consultancy-tycoon-api
+          cp -r backend/migrations deploy-package/
+
+      # ── Deploy ──
+
       - name: Install Ansible
         run: pip install ansible
 
@@ -77,9 +110,9 @@ jobs:
       - name: Set up Vault password
         run: echo "${{ secrets.VAULT_PASSWORD }}" > .vault_password
 
-      - name: Upload build to VM
+      - name: Upload deploy package to VM
         run: |
-          rsync -az --delete build/ deploy@${{ vars.VM_HOST }}:/home/deploy/tycoon.jpro.dev/
+          rsync -az --delete deploy-package/ deploy@${{ vars.VM_HOST }}:/home/deploy/tycoon.jpro.dev/
 
       - name: Run deploy playbook
         working-directory: infra/ansible
