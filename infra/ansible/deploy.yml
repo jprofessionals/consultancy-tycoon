@@ -23,6 +23,15 @@
         group: "{{ deploy_user }}"
         mode: "0755"
 
+    # ── Database migrations (before service start) ──
+
+    - name: Run database migrations
+      ansible.builtin.shell: |
+        sudo -u postgres psql -d {{ db_name }} -f {{ app_dir }}/migrations/001_initial.sql
+      register: migration_result
+      failed_when: false
+      changed_when: "'CREATE' in migration_result.stdout"
+
     # ── Backend systemd service ──
 
     - name: Write API service unit to tmp
@@ -48,22 +57,16 @@
           WantedBy=multi-user.target
         mode: "0644"
 
-    - name: Install service and start API
+    - name: Install service unit
       ansible.builtin.shell: |
         sudo cp /tmp/{{ app_name }}-api.service /etc/systemd/system/
         sudo systemctl daemon-reload
         sudo systemctl enable {{ app_name }}-api
-        sudo systemctl restart {{ app_name }}-api
       changed_when: true
 
-    # ── Database migrations ──
-
-    - name: Run database migrations
-      ansible.builtin.shell: |
-        sudo -u postgres psql -d {{ db_name }} -f {{ app_dir }}/migrations/001_initial.sql
-      register: migration_result
-      failed_when: false
-      changed_when: "'CREATE' in migration_result.stdout"
+    - name: Restart API service
+      ansible.builtin.shell: sudo systemctl restart {{ app_name }}-api
+      changed_when: true
 
     # ── Caddy ──
 
