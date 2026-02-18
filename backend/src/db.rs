@@ -241,7 +241,7 @@ pub async fn upsert_save(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
-        INSERT INTO cloud_saves (player_id, save_data, version)
+        INSERT INTO saves (player_id, save_data, version)
         VALUES ($1, $2, $3)
         ON CONFLICT (player_id) DO UPDATE SET
             save_data = EXCLUDED.save_data,
@@ -266,7 +266,7 @@ pub async fn get_save(
     sqlx::query_as::<_, SaveDownload>(
         r#"
         SELECT save_data, version, updated_at
-        FROM cloud_saves
+        FROM saves
         WHERE player_id = $1
         "#,
     )
