@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 EventBus="*res://src/autoload/event_bus.gd"
 GameState="*res://src/autoload/game_state.gd"
 SaveManager="*res://src/systems/save_manager.gd"
+CloudManager="*res://src/autoload/cloud_manager.gd"
 
 [display]
 
